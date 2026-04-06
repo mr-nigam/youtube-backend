@@ -1,0 +1,17 @@
+{
+  "name": "backend_project",
+  "version": "1.0.0",
+  "description": "building a backend of application similar to youtube and twitter",
+  "keywords": [
+    "mern",
+    "javascrip",
+    "backend"
+  ],
+  "license": "ISC",
+  "author": "\"Parvesh Nigam\"",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
