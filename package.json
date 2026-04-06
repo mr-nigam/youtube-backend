@@ -10,7 +10,7 @@
   "license": "ISC",
   "author": "\"Parvesh Nigam\"",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
