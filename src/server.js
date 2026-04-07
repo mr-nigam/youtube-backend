@@ -3,7 +3,6 @@ import connectDB from "./db/index.js";
 import app from "./app.js";
 
 
-
 connectDB()
     .then(()=>{ 
         app.on("error",(error)=>{
@@ -18,7 +17,8 @@ connectDB()
     })
     .catch((err)=>{
         console.log("MONGO db connection faild !!!", err);
-    });
+    }
+);
 
 
 
