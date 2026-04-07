@@ -1,19 +1,18 @@
-import express from "express";
 import {asyncHandler} from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
-import { User} from "../models/user.models.js";
+import {User} from "../models/user.models.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 
 
-const registerUser = asyncHandler(async (req,res,next)=>{
+const registerUser = asyncHandler(async (req,res)=>{
    
-    const{fullname,username,email,password} = req.body;
+    const{fullName,username,email,password} = req.body;
     console.log(`email: ${email}`);
    
     // validation
     if(
-        [fullname,username,email,password].some(
+        [fullName,username,email,password].some(
             (field) => field?.trim()===""
         )
     ){
@@ -49,25 +48,28 @@ const registerUser = asyncHandler(async (req,res,next)=>{
     if(!avatar){
         throw new ApiError(400,"Avatar is required");
     }
+    // create user on db
     const user = await User.create({
-        fullname,
+        fullName,
         avatar: avatar.url,
-        email,
+        email: email.replace(/"/g, "").trim().toLowerCase(),
         coverImage: coverImage?.url || "",
         password,
         username: usernameLower
-   });
+    });
 
-   const userCreated = await User.findById(user._id);
-   //.select("-password -refreshToken");
-
-   if(!userCreated){
-        throw new ApiError(500,"Server is down");
-   }
    
-   return res.status(201).json(
-    new ApiResponse(201,userCreated,"User registered Successfully")
-   );
+    const createdUser = await User.findById(user._id).select(
+        "-password -__v -watchHistory -subscriptions -subscribers -refreshToken"
+    );
+
+    if(!createdUser){
+        throw new ApiError(500,"Server is down");
+    }
+   
+    return res.status(201).json(
+        new ApiResponse(201,createdUser,"User registered Successfully")
+    );
 });
 
 

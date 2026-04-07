@@ -15,19 +15,20 @@ const uploadOnCloudinary = async (localFilePath) =>{
             resource_type: "auto"
         });
         
-         fs.unlink(localFilePath, (err) => {
-            if (err) console.error("unlink failed", err);
-        });
+        fs.unlinkSync(localFilePath);
 
         // console.log(`file is uploaded on cloudinary ${respons    e.url}`);
         return response;
     }catch(err){
         // remove temp file if upload fails
         //fs.unlinkSync(localFilePath);
-
-        fs.unlink(localFilePath, (err) => {
-            if (err) console.error("unlink failed", err);
-        });
+        // fs.unlink(localFilePath, (err) => {
+        //     if (err) console.error("unlink failed", err);
+        // });
+        
+        if(localFilePath && fs.existsSync(localFilePath)){
+            fs.unlinkSync(localFilePath);
+        }
         
         return null;
     }
