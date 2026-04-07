@@ -73,12 +73,12 @@ const userSchema = new mongoose.Schema(
         ],
         subscribersCount: {
             type: Number,
-            default: 0
+            default: 0,
         },
 
         subscriptionsCount: {
             type: Number,
-            default: 0
+            default: 0,
         }
     },
     {timestamps: true}
