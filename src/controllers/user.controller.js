@@ -4,6 +4,7 @@ import {User} from "../models/user.models.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 
+
 const generateAccessAndRefreshToken = async function (userId) {
     try{
         const user = await User.findById(userId);
@@ -100,7 +101,7 @@ const loginUser = asyncHandler(async (req, res)=>{
             username && { username: username.toLowerCase() },
             email && { email: email.trim().toLowerCase() }
         ].filter(Boolean)
-    });
+    }).select("+password");
 
     if(!user){
         throw new ApiError(400,"User does not exist");
@@ -153,7 +154,7 @@ const logoutUser = asyncHandler(async function(req,res) {
             }
         },
         {
-            new: true
+            returnDocument: "after"
         }
     )
     
