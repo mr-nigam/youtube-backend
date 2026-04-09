@@ -7,7 +7,6 @@ import multer from "multer";
 const app = express();
 const upload = multer();
 
-
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true
@@ -22,7 +21,7 @@ app.use(express.urlencoded({
     limit: "16kb"
 }));
 
-app.use(upload.none()); // for text-only form-data
+// app.use(upload.none()); // for text-only form-data
 
 app.use(express.static("public"))
 
@@ -43,4 +42,5 @@ app.use("/api/v1/users",userRouter);
 /*
 https://localhost:3000/api/v1/users/register
 */
+
 export default app;

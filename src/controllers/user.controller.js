@@ -22,7 +22,7 @@ const generateAccessAndRefreshToken = async (userId) => {
     }
 }
 
-// cookies options
+
 const getCookieOptions = () => ({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -31,12 +31,12 @@ const getCookieOptions = () => ({
 
 const registerUser = asyncHandler(async (req,res) => {
    
-    const{fullName,username,email,password} = req.body;
+    const{fullName, username, email, password} = req.body;
     //console.log(`email: ${email}`);
    
     // validation
     if(
-        [fullName,username,email,password].some(
+        [fullName, username, email, password].some(
             (field) => field?.trim()===""
         )
     ){
@@ -54,9 +54,11 @@ const registerUser = asyncHandler(async (req,res) => {
         throw new ApiError(409,"User Already Exist");
     }
 
-//    check for files
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
+    // check for files
     const avatarLocalPath = req.files?.avatar?.[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path ||"";
 
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar is required");
@@ -140,7 +142,7 @@ const loginUser = asyncHandler(async (req, res) => {
                     accessToken,
                     refreshToken
                 },
-                "User loggin in successfully"
+                "User logged in successfully"
             )
         );
 
@@ -154,9 +156,7 @@ const logoutUser = asyncHandler(async (req,res) => {
                 refreshToken: 1
             }
         },
-        {
-            returnDocument: "after"
-        }
+        { returnDocument: "after"}
     )
     
     return res
@@ -234,7 +234,7 @@ const changeCurrentPassword = asyncHandler(async (req,res) => {
         throw new ApiError(400, "New password must be different");
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select("+password");
 
     if(!user){
         throw new ApiError(404,"User not found");
@@ -283,7 +283,7 @@ const updateAccountDetails = asyncHandler(async (req,res) => {
     const user = await User.findByIdAndUpdate(
         req.user._id,
         { $set: updateFields },
-        { new: true}
+        { returnDocument: "after"}
     ).select("-password -refreshToken");
 
     if (!user){
@@ -301,9 +301,9 @@ const updateAccountDetails = asyncHandler(async (req,res) => {
         );
 });
 
-const updateUserAvatar = asyncHandler(async (req,res) =>{
+const updateUserAvatar = asyncHandler(async (req,res) => {
     const avatarLocalPath = req?.file?.path;
-
+    console.log(avatarLocalPath);
     // delete old avatar from cloudinary here
     // await deleteFromCloudinary(user.avatar);
 
@@ -324,7 +324,7 @@ const updateUserAvatar = asyncHandler(async (req,res) =>{
                 avatar: avatar.url
             }
         },
-        {new: true}
+        { returnDocument: "after"}
     ).select("-password -refreshToken");
 
     if (!user){
@@ -365,7 +365,7 @@ const updateUserCoverImage = asyncHandler(async (req,res) => {
                 coverImage: coverImage.url
             }
         },
-        {new: true}
+        { returnDocument: "after"}
     ).select("-password -refreshToken");
 
     if (!user){

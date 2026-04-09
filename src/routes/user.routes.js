@@ -1,6 +1,7 @@
 import { Router } from "express";
-import {upload} from "../middlewares/multer.middleware.js";
+import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+
 import { 
         loginUser, 
         logoutUser, 
@@ -17,13 +18,16 @@ import {
 const router = Router();
 
 
+// unsecured routes
+
 router.route("/register").post(
-    upload.fields([
-       { name: "avatar", maxCount:1 },
-       { name: "coverImage", maxCount:1 } 
-    ]),
-    registerUser    
+  upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "coverImage", maxCount: 1 }
+  ]),
+  registerUser
 );
+
 
 router.route("/login").post(loginUser);
 
@@ -40,7 +44,12 @@ router.route("/update-account-details").post(verifyJWT, updateAccountDetails);
 
 router.route("/update-avatar").post(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-router.route("/update-coverimage").post(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+router.route("/update-coverimage")
+  .post(
+      verifyJWT, 
+      upload.single("coverImage"), 
+      updateUserCoverImage
+    );
 
 
 export default router;
