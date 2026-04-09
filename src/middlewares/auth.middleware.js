@@ -1,4 +1,3 @@
-
 import ApiError from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
@@ -34,3 +33,4 @@ export const verifyJWT = asyncHandler(async function(req, _, next){
         throw new ApiError(401,err?.message || "Invalid Access Token"); 
     }
 });
+
