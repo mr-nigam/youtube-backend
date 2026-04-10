@@ -12,7 +12,8 @@ import {
         updateAccountDetails,
         updateUserAvatar,
         updateUserCoverImage,
-        getUserChannelProfile
+        getUserChannelProfile,
+        getWatchHistory
 } from "../controllers/user.controller.js";
 
 
@@ -40,11 +41,19 @@ router.route("/change-password").post(verifyJWT, changeCurrentPassword);
 
 router.route("/get-current-user").get(verifyJWT, getCurrentUser);
 
-router.route("/update-account-details").post(verifyJWT, updateAccountDetails);
+router.route("/update-account-details").patch(verifyJWT, updateAccountDetails);
 
-router.route("/update-avatar").post(verifyJWT, upload.single("avatar"), updateUserAvatar);
+router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-router.route("/update-coverimage").post(verifyJWT, upload.single("coverImage"), updateUserCoverImage );
+router.route("/update-coverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+
+router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
+
+router.route("/get-watch-history").get(verifyJWT, getWatchHistory);
 
 
 export default router;
+
+
+// GET /channel        -> my profile
+// GET /c/parvesh       -> someone else's channel
