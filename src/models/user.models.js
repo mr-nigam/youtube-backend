@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-
+// desgign schema for likedvideos, watchhistory,subscription,comment
 const userSchema = new mongoose.Schema(
     {
         fullName: {
@@ -27,6 +27,12 @@ const userSchema = new mongoose.Schema(
             unique: true,
             match: [/.+\@.+\..+/, "Please use a valid email"],
         },
+        password: {
+            type: String,
+            required: [true,"Password is required"],
+            minlength: 8,
+            select: false,
+        },
         avatar :{
             type: String,// cloudinary url
             required: true,
@@ -35,51 +41,10 @@ const userSchema = new mongoose.Schema(
             type: String,// cloudinary url
             default: "",
         },
-        watchHistory: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Video",
-            },
-        ],
-        password: {
-            type: String,
-            required: [true,"Password is required"],
-            minlength: 8,
-            select: false,
-        },
         refreshToken: {
             type: String,
             select: false, // security improvement
         },
-        // followers
-        subscribers: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",   
-            }
-        ],
-        // following
-        subscriptions: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",   
-            }
-        ],
-        likedVideos: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Video",
-            },
-        ],
-        subscribersCount: {
-            type: Number,
-            default: 0,
-        },
-
-        subscriptionsCount: {
-            type: Number,
-            default: 0,
-        }
     },
     {timestamps: true}
 );

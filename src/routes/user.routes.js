@@ -28,7 +28,6 @@ router.route("/register").post(
   registerUser
 );
 
-
 router.route("/login").post(loginUser);
 
 // secured routes
@@ -44,12 +43,7 @@ router.route("/update-account-details").post(verifyJWT, updateAccountDetails);
 
 router.route("/update-avatar").post(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-router.route("/update-coverimage")
-  .post(
-      verifyJWT, 
-      upload.single("coverImage"), 
-      updateUserCoverImage
-    );
+router.route("/update-coverimage").post(verifyJWT, upload.single("coverImage"), updateUserCoverImage );
 
 
 export default router;

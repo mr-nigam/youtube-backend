@@ -7,7 +7,6 @@ const videoSchema = new mongoose.Schema(
         videoFile: {
             type: String, //cloudinary url
             required: true,
-
         },
         thumbnail: {
             type: String,
@@ -32,10 +31,6 @@ const videoSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
-        likesCount: {
-            type: Number,
-            default: 0,
-        },
         isPublished: {
             type: Boolean,
             default: true,
@@ -43,7 +38,14 @@ const videoSchema = new mongoose.Schema(
         owner: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
-        }
+        },
+        size: {
+            type: Number // bytes
+        },
+        tags: [{
+            type: String,
+            trim: true
+        }]
     },
     {timestamps: true}
 );
