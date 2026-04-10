@@ -11,7 +11,8 @@ import {
         getCurrentUser,
         updateAccountDetails,
         updateUserAvatar,
-        updateUserCoverImage
+        updateUserCoverImage,
+        getUserChannelProfile
 } from "../controllers/user.controller.js";
 
 
