@@ -42,7 +42,7 @@ const uploadVideo = asyncHandler(async (req,res) =>{
         cloudinaryPublicThumbnailId: thumbnail.public_id,
         videoUrl: videoFile.secure_url,
         thumbnailUrl: thumbnail.secure_url,
-        title,
+        title: title.replace(/"/g, "").trim(),
         duration: videoFile.duration,
         size: videoFile.bytes,
         owner: userId,
@@ -108,24 +108,13 @@ const getVideo = asyncHandler(async (req,res) =>{
 });
 
 const changeThumbnail = asyncHandler(async (req,res) =>{
-    const {videoId} = req.params;
-    if(!videoId){
-        throw new ApiError(400,"Video id is missing");
-    }
-
     const newThumnnailLocalPath = req?.file?.path;
     if(!newThumnnailLocalPath){
         throw new ApiError(400,"upload new thumbnail");
     }
     
-    const storedVideo = await Video.findById(videoId);
-    if(!storedVideo){
-        throw new ApiError(404,"Video is not in database");
-    }
-    // owner check
-    if(!storedVideo.owner.equals(req.user._id)){
-        throw new ApiError(403,"Unauthirized access, you are not the owner");
-    }
+    //middleware m storedVideo dal denge
+    const storedVideo = req.storedVideo;
 
     const oldThumnail = storedVideo.cloudinaryPublicThumbnailId;
     
@@ -157,20 +146,75 @@ const changeThumbnail = asyncHandler(async (req,res) =>{
 });
 
 const updateVideoDetails = asyncHandler(async (req,res) =>{
-    const {videoId} = req.params;
-    if(!videoId){
-
-    }
     const {title, description, tags} = req.body;
     if(!title && !description && !tags){
         throw new ApiError(400,"Details are misssing");
     }
 
+    //middleware m storedVideo dal denge
+    const storedVideo = req.storedVideo;
+
+    if(title){
+        storedVideo.title = title.replace(/"/g, "").trim();
+    }
+    if(description){
+        storedVideo.description = description.replace(/"/g, "").trim();
+    }
+    if(tags){
+        storedVideo.tags = tags.split(",")
+                .map(tag => tag.replace(/"/g, "")
+                .trim()).filter(Boolean);
+    }
+    await storedVideo.save({validateBeforeSave: false});
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    title: storedVideo.title,
+                    description: storedVideo.description,
+                    tags: storedVideo.tags
+                },
+                "Details updated successfully"
+            )
+        );
 });
 
 const deleteVideo = asyncHandler(async (req, res) =>{
+    const storedVideo = req.storedVideo;
+
+    const {
+        cloudinaryPublicFileId,
+        cloudinaryPublicThumbnailId
+        } = storedVideo;
+
+    const isdeleted = await Video.findByIdAndDelete(storedVideo._id);
+    
+    if(!isdeleted){
+        throw new Api(500,"Video did not get deleted");
+    }
+
+    try{
+        if (cloudinaryPublicFileId) {
+            await deleteFromCloudinary(cloudinaryPublicFileId,"video");
+        }
+        if (cloudinaryPublicThumbnailId) {
+            await deleteFromCloudinary(cloudinaryPublicThumbnailId,"image");
+        }
+    }catch(err){
+        console.error("Cloudinary deletion failed:", err.message);
+    }
+
+    return res.status(200).json({
+        success: true,
+        message: "Video deleted successfully"
+    });
 
 });
+
+
 export {
     uploadVideo,
     changeThumbnail,

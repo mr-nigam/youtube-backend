@@ -44,7 +44,7 @@ const deleteFromCloudinary = async(public_id, resourceType="image") =>{
             err?.message ||"Error while deleting the file"
         );
     };
-}
+};
 
 export {uploadOnCloudinary,deleteFromCloudinary};
 
