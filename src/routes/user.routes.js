@@ -13,16 +13,15 @@ import {
         updateUserAvatar,
         updateUserCoverImage,
         getChannelProfile,
-        getWatchHistory
+        getWatchHistory,
+        deleteUser
 } from "../controllers/user.controller.js";
-
 
 const router = Router();
 
 
-// unsecured routes
-
-router.route("/register").post(
+// 🔓 Public routes
+router.route("/auth/register").post(
   upload.fields([
     { name: "avatar", maxCount: 1 },
     { name: "coverImage", maxCount: 1 }
@@ -30,30 +29,46 @@ router.route("/register").post(
   registerUser
 );
 
-router.route("/login").post(loginUser);
+router.route("/auth/login").post(loginUser);
 
-// secured routes
-router.route("/logout").post(verifyJWT, logoutUser);
+router.route("/auth/refresh-token").post(refreshAccessToken);
 
-router.route("/refresh-token").post(refreshAccessToken);
 
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+// 🔐 Protected routes
+router.route("/auth/logout").post(verifyJWT, logoutUser);
 
-router.route("/get-current-user").get(verifyJWT, getCurrentUser);
 
-router.route("/update-account-details").patch(verifyJWT, updateAccountDetails);
+// 👤 Current user (grouped properly)
+router.route("/me")
+  .get(verifyJWT, getCurrentUser)
+  .patch(verifyJWT, updateAccountDetails)
+  .delete(verifyJWT,deleteUser);
 
-router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-router.route("/update-coverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+// 🔑 Password
+router.route("/me/password")
+  .post(verifyJWT, changeCurrentPassword);
 
-router.route("/channel/:username").get(verifyJWT, getChannelProfile);
 
-router.route("/get-watch-history").get(verifyJWT, getWatchHistory);
+router.route("/me/avatar")
+  .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+
+
+router.route("/me/cover-image")
+  .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+
+
+// 📺 Other user profile
+router.route("/:username")
+  .get(verifyJWT, getChannelProfile);
+
+
+router.route("/me/watch-history")
+  .get(verifyJWT, getWatchHistory);
 
 
 export default router;
 
-
+  
 // GET /channel        -> my profile
 // GET /c/parvesh       -> someone else's channel

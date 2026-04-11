@@ -23,13 +23,13 @@ export const verifyJWT = asyncHandler(async function(req, _, next){
             .select("-password -refreshToken");
         
         if(!user){
-            throw new ApiError(401,"Invalid Access Token");   
+            throw new ApiError(401, "Invalid or expired access token");
         }
         
         req.user = user;
         next();
     
     }catch(err){
-        throw new ApiError(401,err?.message || "Invalid Access Token"); 
+        throw new ApiError(401, "Invalid or expired access token");
     }
 });

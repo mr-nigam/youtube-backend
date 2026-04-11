@@ -37,9 +37,17 @@ const userSchema = new mongoose.Schema(
             type: String,// cloudinary url
             required: true,
         },
+        avatarPublicId: {
+            type: String,// cloudinary public id
+            required: true,
+        },
         coverImage: {
             type: String,// cloudinary url
             default: "",
+        },
+        coverImagePublicId: {
+            type: String,// cloudinary public id
+            default: ""
         },
         refreshToken: {
             type: String,
