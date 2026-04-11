@@ -1,7 +1,7 @@
 import {Video} from "../models/video.models.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 
-const validateVideo = asyncHandler( async (req,res,next)=>{
+export const validateVideo = asyncHandler( async (req,res,next)=>{
     const {videoId} = req.params;
     if(!videoId){
         throw new ApiError(400,"Video id is missing");
@@ -17,5 +17,3 @@ const validateVideo = asyncHandler( async (req,res,next)=>{
     }
     next();
 });
-
-export {validateVideo}
