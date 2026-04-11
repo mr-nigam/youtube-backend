@@ -12,7 +12,7 @@ import {
         updateAccountDetails,
         updateUserAvatar,
         updateUserCoverImage,
-        getUserChannelProfile,
+        getChannelProfile,
         getWatchHistory
 } from "../controllers/user.controller.js";
 
@@ -47,7 +47,7 @@ router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateU
 
 router.route("/update-coverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
 
-router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
+router.route("/channel/:username").get(verifyJWT, getChannelProfile);
 
 router.route("/get-watch-history").get(verifyJWT, getWatchHistory);
 

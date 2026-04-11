@@ -7,6 +7,7 @@ import multer from "multer";
 const app = express();
 const upload = multer();
 
+
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true
@@ -25,7 +26,7 @@ app.use(express.urlencoded({
 
 app.use(express.static("public"))
 
-app.use(cookieParser());
+app.use(cookieParser());    
 
 
 // import routes
