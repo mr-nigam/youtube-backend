@@ -1,0 +1,50 @@
+Date : 2026-04-11 15:36:18
+Directory : c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src
+Total : 19 files,  886 codes, 126 comments, 255 blanks, all 1267 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JavaScript |         19 |        886 |        126 |        255 |      1,267 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                               | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                  |         19 |        886 |        126 |        255 |      1,267 |
+| . (Files)                                                                          |          3 |         41 |         29 |         45 |        115 |
+| controllers                                                                        |          1 |        434 |         31 |         98 |        563 |
+| db                                                                                 |          1 |         15 |          0 |          4 |         19 |
+| middlewares                                                                        |          2 |         42 |          1 |         15 |         58 |
+| models                                                                             |          7 |        253 |         35 |         50 |        338 |
+| routes                                                                             |          1 |         35 |          4 |         20 |         59 |
+| utils                                                                              |          4 |         66 |         26 |         23 |        115 |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                           | language   | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\app.js                           | JavaScript |         22 |          6 |         19 |         47 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\constants.js                     | JavaScript |          1 |          0 |          1 |          2 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\controllers\user.controller.js   | JavaScript |        434 |         31 |         98 |        563 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\db\index.js                      | JavaScript |         15 |          0 |          4 |         19 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\middlewares\auth.middleware.js   | JavaScript |         27 |          0 |         10 |         37 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\middlewares\multer.middleware.js | JavaScript |         15 |          1 |          5 |         21 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\comment.models.js         | JavaScript |         26 |          0 |          5 |         31 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\like.models.js            | JavaScript |         27 |         26 |          8 |         61 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\playlist.models.js        | JavaScript |         29 |          6 |         11 |         46 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\subscription.models.js    | JavaScript |         18 |          1 |          4 |         23 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\tweet.models.js           | JavaScript |         18 |          1 |         10 |         29 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\user.models.js            | JavaScript |         84 |          1 |          8 |         93 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\models\video.models.js           | JavaScript |         51 |          0 |          4 |         55 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\routes\user.routes.js            | JavaScript |         35 |          4 |         20 |         59 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\server.js                        | JavaScript |         18 |         23 |         25 |         66 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\utils\ApiError.js                | JavaScript |         21 |          2 |          5 |         28 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\utils\ApiResponse.js             | JavaScript |         15 |          6 |          3 |         24 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\utils\asyncHandler.js            | JavaScript |          7 |         12 |          4 |         23 |
+| c:\Parvesh\Study\Prep\Web Dev\YTBE\be_project\src\utils\cloudinary.js              | JavaScript |         23 |          6 |         11 |         40 |
+| Total                                                                              |            |        886 |        126 |        255 |      1,267 |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

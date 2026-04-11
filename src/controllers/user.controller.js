@@ -94,9 +94,15 @@ const registerUser = asyncHandler(async (req,res) => {
         throw new ApiError(500,"Server is down");
     }
    
-    return res.status(201).json(
-        new ApiResponse(201,createdUser,"User registered Successfully")
-    );
+    return res
+        .status(201)
+        .json(
+            new ApiResponse(
+                201,
+                createdUser,
+                "User registered Successfully"
+            )
+        );
 });
 
 const loginUser = asyncHandler(async (req, res) => {

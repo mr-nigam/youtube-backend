@@ -1,12 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import multer from "multer";
-
 
 const app = express();
-const upload = multer();
-
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
@@ -22,8 +18,6 @@ app.use(express.urlencoded({
     limit: "16kb"
 }));
 
-// app.use(upload.none()); // for text-only form-data
-
 app.use(express.static("public"))
 
 app.use(cookieParser());    
@@ -31,17 +25,19 @@ app.use(cookieParser());
 
 // import routes
 import userRouter from "./routes/user.routes.js" 
+import videoRouter from "./routes/video.routes.js" 
 
 
+app.use((req, res, next) => {
+    console.log("METHOD:", req.method);
+    console.log("URL:", req.url);
+    next();
+});
 
 // routes declaration
-app.use("/api/v1/users",userRouter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/videos", videoRouter);
 
 
-
-
-/*
-https://localhost:3000/api/v1/users/register
-*/
 
 export default app;

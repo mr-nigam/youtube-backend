@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from "cloudinary";
 import fs from "fs";
+import ApiError from "./ApiError.js";
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -11,20 +12,14 @@ const uploadOnCloudinary = async (localFilePath) =>{
     try{
         if(!localFilePath) return null;
 
-        const response = await cloudinary.uploader.upload(localFilePath,{
+        const result = await cloudinary.uploader.upload(localFilePath,{
             resource_type: "auto"
         });
         
         fs.unlinkSync(localFilePath);
 
-        // console.log(`file is uploaded on cloudinary ${respons    e.url}`);
-        return response;
+        return result;
     }catch(err){
-        // remove temp file if upload fails
-        //fs.unlinkSync(localFilePath);
-        // fs.unlink(localFilePath, (err) => {
-        //     if (err) console.error("unlink failed", err);
-        // });
         
         if(localFilePath && fs.existsSync(localFilePath)){
             fs.unlinkSync(localFilePath);
@@ -34,6 +29,23 @@ const uploadOnCloudinary = async (localFilePath) =>{
     }
 };
 
-export {uploadOnCloudinary};
+const deleteFromCloudinary = async(public_id, resourceType="image") =>{
+    try{
+        if(!public_id) return false;
+
+        const result = await cloudinary.uploader.destroy(public_id, {
+            resource_type: resourceType
+        });
+
+        return result;
+    }catch(err){
+        throw new ApiError(
+            500,
+            err?.message ||"Error while deleting the file"
+        );
+    };
+}
+
+export {uploadOnCloudinary,deleteFromCloudinary};
 
 
