@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
+import {validateDeleteUser} from "../middlewares/delete_user.middleware.js";
 
 import { 
         loginUser, 
@@ -42,7 +43,7 @@ router.route("/auth/logout").post(verifyJWT, logoutUser);
 router.route("/me")
   .get(verifyJWT, getCurrentUser)
   .patch(verifyJWT, updateAccountDetails)
-  .delete(verifyJWT,deleteUser);
+  .delete(verifyJWT, validateDeleteUser, deleteUser);
 
 
 // 🔑 Password
@@ -67,8 +68,9 @@ router.route("/me/watch-history")
   .get(verifyJWT, getWatchHistory);
 
 
+  
 export default router;
 
-  
+
 // GET /channel        -> my profile
 // GET /c/parvesh       -> someone else's channel

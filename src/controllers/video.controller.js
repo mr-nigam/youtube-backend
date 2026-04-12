@@ -182,7 +182,7 @@ const updateVideoDetails = asyncHandler(async (req,res) =>{
         );
 });
 
-const deleteVideo = asyncHandler(async (req, res) =>{
+const deleteVideo = asyncHandler(async (req, res) => {
     const storedVideo = req.storedVideo;
 
     const {

@@ -3,7 +3,6 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 
 
-
 export const validateVideo = asyncHandler( async (req, _, next)=>{
     const { videoId } = req.params;
 
