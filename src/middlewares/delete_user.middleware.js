@@ -25,7 +25,6 @@ export const validateDeleteUser = asyncHandler(async (req,res,next)=>{
         throw new ApiError(400, "Password is required");
     }
 
-
     const isPasswordValid = await user.isPasswordCorrect(password);
 
     if(!isPasswordValid){

@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import pLimit from "p-limit";
 
 // import all models
-import {User} from "../models/user.models.js";
+import { User } from "../models/user.models.js";
 import { Video } from "../models/video.models.js";
 import { Like } from "../models/like.models.js";
 import { Comment } from "../models/comment.models.js";
@@ -559,69 +559,40 @@ const getWatchHistory = asyncHandler (async (req,res) => {
         );
 });
 
-// learn populate to delete all dependency
 const deleteUser = asyncHandler(async (req,res)=>{
     const user = req.user;
    
     // Start transaction
     const session = await mongoose.startSession();
-    session.startTransaction();
-
+    
+    let avatarPublicId = user?.avatarPublicId; 
+    let coverImagePublicId = user?.coverImagePublicId; 
+    let videos = [];
     try{
-        // delete data from clodunary
-        try{
-            if(user.avatarPublicId){
-                await deleteFromCloudinary(user.avatarPublicId);
+    
+        await session.withTransaction(async()=>{
+            // fetch videos
+            videos = await Video.find({ owner: user._id }).session(session);
+
+            await Promise.all([
+                Video.deleteMany({owner: user._id}).session(session),
+                Like.deleteMany({likedBy: user._id}).session(session),
+                Comment.deleteMany({owner: user._id}).session(session),
+                Tweet.deleteMany({postedBy: user._id}).session(session),
+                Playlist.deleteMany({postedBy: user._id}).session(session),
+                Subscription.deleteMany({
+                    $or: [ {subscriber: user._id}, {channel: user._id}]
+                }).session(session),    
+            ]);
+
+            // delete User
+            const deletedUser = await User.findByIdAndDelete(user._id).session(session);
+            if (!deletedUser) {
+                throw new ApiError(500, "Failed to delete user");
             }
-            if(user.coverImagePublicId){
-                await deleteFromCloudinary(user.coverImagePublicId);   
-            }
-            console.log("Cloudinary deletion done");
-        }catch(err){
-            console.error("Cloudinary deletion failed",err.message);
-        }
-
-
-        // delete videos uploaded by user;
-        const videos = await Video.find({owner: user._id}).session(session);
-        const deleteVideos = await Video.deleteMany({ owner: user._id }).session(session);
-        console.log(`Videos deleted: ${deleteVideos.deletedCount}`);
-
-
-
-        // delete likes
-        const likesDelete = await Like.deleteMany({likedBy: user._id}).session(session);
-        console.log(`Likes deleted: ${likesDelete.deletedCount}`);
-
-        // delete comments
-        const commentsDelete = await Comment.deleteMany({owner: user._id}).session(session);
-        console.log(`Comments deleted :${commentsDelete.deletedCount}`);
-
+        });
         
-        // delete tweets
-        const tweetsDelete = await Tweet.deleteMany({postedBy: user._id}).session(session);
-        console.log(`Tweets deleted :${tweetsDelete.deletedCount}`);
-
-        // delete subscribers and subscription
-        const subsDelete = await Subscription.deleteMany({
-                $or: [{subscriber: user._id},{channel: user._id}]
-            }).session(session);
-        
-        console.log(`Subs deleted: ${subsDelete.deletedCount}`);
-        
-        // playlist delete 
-        const playlistsDelete = await Playlist.deleteMany({postedBy: user._id}).session(session);
-        console.log(`Playlists deleted :${playlistsDelete.deletedCount}`);
-
-        // delete User
-        const deletedUser = await User.findByIdAndDelete(user._id).session(session);
-        if (!deletedUser) {
-            throw new ApiError(500, "Failed to delete user");
-        }
-
-        await session.commitTransaction();
-        session.endSession();
-        
+        //----- Delete data from clodunary
         const limit = pLimit(5);
 
         await Promise.all(
@@ -637,6 +608,19 @@ const deleteUser = asyncHandler(async (req,res)=>{
             ])
         );
         
+        // delete avatar and coverimage
+        try{
+            if(avatarPublicId){
+                await deleteFromCloudinary(avatarPublicId,"image");
+            }
+            if(coverImagePublicId){
+                await deleteFromCloudinary(coverImagePublicId,"image");   
+            }
+            console.log("Cloudinary deletion done");
+        }catch(err){
+            console.error("Cloudinary deletion failed",err.message);
+        }
+
         console.log("User deleted successfully");
 
         return res.status(200).json({
@@ -645,16 +629,15 @@ const deleteUser = asyncHandler(async (req,res)=>{
         });
 
     }catch(error){
-        // ❌ Rollback everything
-        await session.abortTransaction();
-        session.endSession();
-
         console.error("Deletion failed:", error.message);
 
         throw new ApiError(
             error.statusCode || 500,
             error.message || "User deletion failed"
         );
+    }finally{
+        // ✅ close session
+        session.endSession();
     }
 });
 
@@ -694,3 +677,10 @@ return res for done else return error
 get user details from frontend/body
 
 */
+
+
+
+
+function learn(){
+
+}

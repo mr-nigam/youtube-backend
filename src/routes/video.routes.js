@@ -4,12 +4,12 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateVideo } from "../middlewares/videos.middleware.js";
 
 
-import { 
+import {
     uploadVideo,
-    changeThumbnail,
     getVideo,
     updateVideoDetails,
     deleteVideo,
+    changeThumbnail,
 } from "../controllers/video.controller.js";
 
 
@@ -17,26 +17,22 @@ const router = Router();
 
 // console.log("Video routes loaded");
 
+router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
 router.route("/upload")
-    .post(verifyJWT,
-        upload.fields([
+    .post(upload.fields([
             {name: "videoFile", maxCount: 1},
             {name: "thumbnail", maxCount: 1},
         ]),
         uploadVideo
     );
 
-
-router.route("/:videoId").get(verifyJWT,getVideo);
-
+router.route("/:videoId")
+    .get(getVideo)
+    .patch(validateVideo, updateVideoDetails)
+    .delete(validateVideo,deleteVideo);
+    
 router.route("/:videoId/thumbnail")
-    .patch(verifyJWT, validateVideo,upload.single("thumbnail"),changeThumbnail);
-
-router.route("/:videoId/update")    
-    .patch(verifyJWT, validateVideo, updateVideoDetails);
-
-router.route("/:videoId/delete")
-    .delete(verifyJWT,validateVideo,deleteVideo);
-
-
+    .patch(validateVideo,upload.single("thumbnail"),changeThumbnail);
+    
 export default router;
