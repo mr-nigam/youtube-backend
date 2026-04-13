@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 
+
 export const validateDeleteUser = asyncHandler(async (req,res,next)=>{
     const {email, username, password} = req.body;
 

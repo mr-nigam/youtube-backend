@@ -15,17 +15,23 @@ const commentSchema = new mongoose.Schema(
             ref: "User",
             required: true
         },
-        video: {
+        item: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Video",
             required: true,
+            refPath: "onModel"
+        },
+        onModel: {
+            type: String,
+            required: true,
+            enum: ["Video","Comment","Tweet"]
         }
     },
     {timestamps: true}
 );
 
-commentSchema.index({ video: 1, createdAt: -1 });
+commentSchema.index({ item: 1, createdAt: -1 });
 
 commentSchema.plugin(mongooseAggregatePaginate);
+
 
 export const Comment = mongoose.model("Comment",commentSchema);

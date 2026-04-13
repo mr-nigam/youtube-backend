@@ -572,7 +572,7 @@ const deleteUser = asyncHandler(async (req,res)=>{
     
         await session.withTransaction(async()=>{
             // fetch videos
-            videos = await Video.find({ owner: user._id }).session(session);
+            videos = await Video.find({owner: user._id}).session(session);
 
             await Promise.all([
                 Video.deleteMany({owner: user._id}).session(session),
@@ -640,6 +640,7 @@ const deleteUser = asyncHandler(async (req,res)=>{
         session.endSession();
     }
 });
+
 
 export {
     registerUser,

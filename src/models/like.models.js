@@ -8,7 +8,7 @@ const likeSchema = new mongoose.Schema(
             ref: "User",
             required: true,
         },
-        likedItem: {
+        item: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
             refPath: "onModel"
@@ -24,38 +24,11 @@ const likeSchema = new mongoose.Schema(
 );
 
 likeSchema.index(
-  {likedBy: 1, likedItem: 1, onModel: 1},
+  {likedBy: 1, item: 1, onModel: 1},
   {unique: true}
 );
 
-likeSchema.index({likedItem: 1, onModel: 1});
+likeSchema.index({item: 1, onModel: 1});
+
 
 export const Like = mongoose.model("Like",likeSchema);
-
-
-
-// const likesSchema = new mongoose.Schema(
-//     {
-//         likedBy: {
-//             type: mongoose.Schema.Types.ObjectId,
-//             ref: "User",
-//             required: true,
-//         },
-//         video: {
-//             type: mongoose.Schema.Types.ObjectId,
-//             ref: "Video",
-//             default: null
-//         },
-//         tweet: {
-//             type: mongoose.Schema.Types.ObjectId,
-//             ref: "Tweet",
-//             default: null
-//         },
-//         comment: {
-//             type: mongoose.Schema.Types.ObjectId,
-//             ref: "Comment",
-//             default: null
-//         }
-//     },
-//     {timestamps: true}
-// );

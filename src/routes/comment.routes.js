@@ -8,14 +8,16 @@ import{
     deleteComment
 } from "../controllers/comment.controller.js";
 
+
 const router = Router();
 
-router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
+router.use(verifyJWT);
 
 // change layout of this
-router.route("/:videoId")
+router.route("/model/:itemId")
     .get(getComments)
-    .post(addComment);
+    .post(addComment)
 
 router.route("/c/:commentId")
     .patch(updateComment)

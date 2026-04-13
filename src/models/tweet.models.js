@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const tweetSchema = new mongoose.Schema(
     {
@@ -16,13 +16,9 @@ const tweetSchema = new mongoose.Schema(
     },
     {timestamps: true}
 );
-
-// well return new first in sorted order
+    
 tweetSchema.index({postedBy: 1, createdAt: -1});
 
+tweetSchema.plugin(mongooseAggregatePaginate);
+
 export const Tweet = mongoose.model("Tweet",tweetSchema);
-
-
-
-
-

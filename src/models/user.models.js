@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-// desgign schema for likedvideos, watchhistory,subscription,comment
+
 const userSchema = new mongoose.Schema(
     {
         fullName: {
@@ -96,5 +96,6 @@ userSchema.methods.generateRefreshToken = function () {
         }
     );
 };
+
 
 export const User = mongoose.model("User",userSchema);

@@ -18,6 +18,7 @@ import {
         deleteUser
 } from "../controllers/user.controller.js";
 
+
 const router = Router();
 
 
@@ -38,37 +39,27 @@ router.route("/auth/refresh-token").post(refreshAccessToken);
 // 🔐 Protected routes
 router.route("/auth/logout").post(verifyJWT, logoutUser);
 
-
-// 👤 Current user (grouped properly)
 router.route("/me")
   .get(verifyJWT, getCurrentUser)
   .patch(verifyJWT, updateAccountDetails)
   .delete(verifyJWT, validateDeleteUser, deleteUser);
 
-
-// 🔑 Password
 router.route("/me/password")
   .post(verifyJWT, changeCurrentPassword);
-
 
 router.route("/me/avatar")
   .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
-
 router.route("/me/cover-image")
   .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
 
-
-// 📺 Other user profile
 router.route("/:username")
   .get(verifyJWT, getChannelProfile);
-
 
 router.route("/me/watch-history")
   .get(verifyJWT, getWatchHistory);
 
 
-  
 export default router;
 
 

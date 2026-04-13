@@ -21,8 +21,5 @@ class ApiError extends Error{
     }
 };
 
+
 export default ApiError;
-
-
-// use case
-// throw new ApiError(401, "Unauthorized access");

@@ -3,7 +3,6 @@ import {upload} from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validateVideo } from "../middlewares/videos.middleware.js";
 
-
 import {
     uploadVideo,
     getVideo,
@@ -15,9 +14,9 @@ import {
 
 const router = Router();
 
-// console.log("Video routes loaded");
 
-router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
+router.use(verifyJWT);
 
 router.route("/upload")
     .post(upload.fields([
@@ -35,4 +34,5 @@ router.route("/:videoId")
 router.route("/:videoId/thumbnail")
     .patch(validateVideo,upload.single("thumbnail"),changeThumbnail);
     
+
 export default router;

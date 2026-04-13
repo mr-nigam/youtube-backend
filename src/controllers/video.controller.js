@@ -10,6 +10,8 @@ import { Like } from "../models/like.models.js";
 import { Comment } from "../models/comment.models.js";
 import { Playlist } from "../models/playlist.models.js";
 import { WatchHistory } from "../models/watchHistory.models.js";
+import { User } from "../models/user.models.js";
+
 
 const uploadVideo = asyncHandler(async (req,res) =>{
     const {tags} = req.body;
@@ -106,6 +108,11 @@ const getVideo = asyncHandler(async (req,res) =>{
         .select("-cloudinaryPublicFileId -cloudinaryPublicThumbnailId -__v")
         .populate("owner", "username avatar")
         .lean();
+    
+    // 2. Increment channel total views
+    await User.findByIdAndUpdate(req.user._id, {
+        $inc: { totalViews: 1 }
+    });
 
     if(!video){
         throw new ApiError(404,"Video not found");
@@ -290,6 +297,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
 // const togglePublishStatus = asyncHandler(async (req, res) => {
 //     const { videoId } = req.params
 // });
+
 
 export {
     uploadVideo,

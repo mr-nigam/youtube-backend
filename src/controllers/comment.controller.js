@@ -1,58 +1,74 @@
 import { Comment } from "../models/comment.models.js";
 import { Video } from "../models/video.models.js";
+import { Tweet } from "../models/tweet.models.js";
+
 
 import { asyncHandler } from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 
 
-
-const formatComment = (comment) => ({
+const formatComment = (comment,user) => ({
     _id: comment._id,
     content: comment.content,
-    videoId: comment.video,
-    owner: comment.owner,
+    itemId: comment.item,
+    item: comment.onModel,
+    owner: {
+        _id: user._id,
+        username: user.username,
+        avatar: user.avatar
+    },
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
     isEdited: comment.createdAt !== comment.updatedAt
 });
 
 const getComments = asyncHandler( async(req,res) =>{
-    const {videoId} = req.params;
-
+    const {itemId,model} = req.params;
 });
 
 const addComment = asyncHandler(async (req, res) => {
-    const {videoId} = req.params;
-    if(!videoId){
-        throw new ApiError(400,"Video id is missing");
+    const {itemId,model} = req.params;
+
+    if(!itemId || !isValidObjectId(itemId) || !model){
+        throw new ApiError(400, `Invalid ${model} id`);
     }
-    
+
     const content = req.body.content?.trim();
     if(!content){
         throw new ApiError(400,"Please write something in comment");
     }
-
-    const videoExists = await Video.exists({ _id: videoId });
-    if (!videoExists) {
-        throw new ApiError(404, "Video not found");
+    
+    const modelMap = {
+        Video,
+        Tweet,
+        Comment
+    };
+    
+    const Model = modelMap[model];
+    if(!Model){
+        throw new ApiError(400, "Invalid item type");
+    }
+    const itemExists = await Model.exists({ _id: itemId });
+    
+    if (!itemExists) {
+        throw new ApiError(404, `${model} not found`);
     }
     
     const comment = await Comment.create({
         content: content, 
         owner: req.user._id,
-        video: videoId,
+        item: itemId,
+        onModel: model,
     });
-
-    const populatedComment = await comment.populate("owner", "username avatar");
 
     return res
         .status(201)
         .json(
             new ApiResponse(
                 201,
-                formatComment(populatedComment),
+                formatComment(comment,req.user),
                 "Comment created successfully"
             )
         );
@@ -60,8 +76,9 @@ const addComment = asyncHandler(async (req, res) => {
 
 const updateComment = asyncHandler(async (req, res) => {
     const {commentId} = req.params;
-    if(!commentId){
-        throw new ApiError(400,"Comment id is missing");
+
+    if(!commentId || !isValidObjectId(commentId)){
+        throw new ApiError(400, `Invalid comment id`);
     }
     
     const content = req.body.content?.trim();
@@ -81,7 +98,7 @@ const updateComment = asyncHandler(async (req, res) => {
             new: true, // return updated doc
             runValidators: true
         }
-    ).populate("owner","username avatar");
+    );
 
     if(!updatedComment){
         throw new ApiError(404,"Comment not found or unauthorized");
@@ -92,7 +109,7 @@ const updateComment = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200,
-                formatComment(updatedComment),
+                formatComment(updatedComment,req.user),
                 "Comment updated successfully"
             )
         );
@@ -100,9 +117,10 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-    const { commentId } = req.params;
-    if(!commentId){
-        throw new ApiError(400,"Comment id is missing");
+    const {commentId} = req.params;
+
+    if(!commentId || !isValidObjectId(commentId)){
+        throw new ApiError(400, `Invalid comment id`);
     }
 
     const deletedComment = await Comment.findOneAndDelete({
@@ -119,12 +137,13 @@ const deleteComment = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200,
-                null,
+                true,
                 "Comment deleted successfully"
             )
         );
 
 });
+
 
 export{
     getComments,
