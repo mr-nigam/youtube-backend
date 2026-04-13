@@ -22,6 +22,7 @@ router.route("/:tweetId").get(getTweet);
 // protected endpoints
 router.use(verifyJWT);
 
+
 router.route("/me").get(getMyTweets);
 
 router.route("/").post(createTweet);
