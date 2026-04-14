@@ -159,47 +159,6 @@ const getPlaylistsByChannel = asyncHandler( async(req,res)=>{
 
 });
 
-const addVideoToPlaylist = asyncHandler(async (req, res) => {
-    const {playlistId, videoId} = req.params;
-
-    if(!playlistId || !isValidObjectId(playlistId)){
-        throw new ApiError(400, "Invalid playlist id");
-    }
-
-    if(!videoId || !isValidObjectId(videoId)){
-        throw new ApiError(400, "Invalid video id");
-    }
-
-    const privacy = req.body.privacy?.trim() || "public";
-    const videoExists = await Video.exists({ _id: videoId });
-    if (!videoExists) {
-        throw new ApiError(404, "Video not found");
-    }
-    
-    const updatedPlaylist = await Playlist.findOneAndUpdate(
-        {_id: playlistId, owner: req.user._id},
-        {
-            $addToSet: { videos: videoId},
-            ...(privacy && { $set: { privacy } })
-        },
-        {new: true}
-    ).lean();
-
-    if(!updatedPlaylist){
-        throw new ApiError(404, "Playlist not found or unauthorized access");
-    }
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                formatPlaylistResponse(updatedPlaylist,req.user),
-                "Video added to playlist successfully"
-            )
-        );
-});
-
 const updatePlaylist = asyncHandler( async (req,res) =>{
     const {playlistId} = req.params;
     
@@ -267,12 +226,55 @@ const deletePlaylist = asyncHandler( async(req,res) =>{
         );
 });
 
-const removeVideoFromPlaylist = asyncHandler(async(req,res) =>{
-    const{playlistId, videoId} = req.params;
+const addVideoToPlaylist = asyncHandler(async (req, res) => {
+    const {playlistId} = req.params;
     
+    if(!playlistId || !isValidObjectId(playlistId)){
+        throw new ApiError(400, "Invalid playlist id");
+    }
+
+    const {videoId} = req.body;
+    if(!videoId || !isValidObjectId(videoId)){
+        throw new ApiError(400, "Invalid video id");
+    }
+
+    const privacy = req.body.privacy?.trim() || "public";
+    const videoExists = await Video.exists({ _id: videoId });
+    if (!videoExists) {
+        throw new ApiError(404, "Video not found");
+    }
+    
+    const updatedPlaylist = await Playlist.findOneAndUpdate(
+        {_id: playlistId, owner: req.user._id},
+        {
+            $addToSet: { videos: videoId},
+            ...(privacy && { $set: { privacy } })
+        },
+        {new: true}
+    ).lean();
+
+    if(!updatedPlaylist){
+        throw new ApiError(404, "Playlist not found or unauthorized access");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                formatPlaylistResponse(updatedPlaylist,req.user),
+                "Video added to playlist successfully"
+            )
+        );
+});
+
+const removeVideoFromPlaylist = asyncHandler(async(req,res) =>{
+
+    const{playlistId, videoId} = req.params;
     if(!playlistId || !isValidObjectId(playlistId)){
         throw new ApiError(400,"Invalid playlist id");
     }
+
     if(!videoId || !isValidObjectId(videoId)){
         throw new ApiError(400,"Invalid video id");
     }
@@ -283,9 +285,7 @@ const removeVideoFromPlaylist = asyncHandler(async(req,res) =>{
             owner: req.user._id,
             videos: videoId
         },
-        {
-            $pull: {videos: videoId}
-        },
+        { $pull: {videos: videoId}},
         {new : true}
     ).lean();
 
@@ -305,6 +305,10 @@ const removeVideoFromPlaylist = asyncHandler(async(req,res) =>{
         
 });
 
+const getPlaylistsUniversal = asyncHandler(async (req,res) =>{
+    
+});
+
 
 export{
     createPlaylist, 
@@ -314,6 +318,7 @@ export{
     addVideoToPlaylist,
     updatePlaylist,
     deletePlaylist,
-    removeVideoFromPlaylist
+    removeVideoFromPlaylist,
+    getPlaylistsUniversal
 }
 
