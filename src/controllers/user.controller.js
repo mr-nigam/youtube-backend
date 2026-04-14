@@ -418,21 +418,22 @@ const updateUserCoverImage = asyncHandler(async (req,res) => {
 });
 
 const getChannelProfile = asyncHandler(async (req,res) => {
-    const {username} = req.params;
+    // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
+    const {channelId} = req.params;
     
-    if(!username?.trim()){
-        throw new ApiError(400,"username is missing");
+    if(!channelId || !isValidObjectId(channelId)){
+        throw new ApiError(400, `Invalid Channel id`);
     }
 
     // converting usedId string to ObjectId type
-    const loggedInUserId = req.user?._id
+    const userId = req.user?._id
         ? new mongoose.Types.ObjectId(req.user._id)
         : null;
 
     
     let channel = await User.aggregate([
         {
-            $match: {username: username?. toLowerCase()}
+            $match: {_id: channelId}
         },
         {
             $lookup: {
@@ -461,8 +462,8 @@ const getChannelProfile = asyncHandler(async (req,res) => {
                 },
                 isSubscribed: {
                     $and: [
-                        {$ne: [loggedInUserId, null]},
-                        {$in: [loggedInUserId,"$subscribers.subscriber"]}
+                        {$ne: [userId, null]},
+                        {$in: [userId,"$subscribers.subscriber"]}
                     ]    
                 }
             }
@@ -475,7 +476,8 @@ const getChannelProfile = asyncHandler(async (req,res) => {
                 coverImage: 1,
                 subscribersCount: 1,
                 channelSubscribersToCount: 1,
-                isSubscribed: 1
+                isSubscribed: 1,
+                totalViews: 1
             }
         }
     ]);
@@ -656,32 +658,3 @@ export {
     getWatchHistory,
     deleteUser
 };
-
-
-
-/*  
-----Steps to follow for User Register---
-get user details from frontend/body
-validation for data - not empty
-check if user already exist: username and email
-check for images, check for avatar
-upload them to cloudinary, avatar
-check for avatar from cloudinary
-create user object - creat entry in db
-remove password and refresh token fields from respone
-check for response for user creatin from db
-return res for done else return error
-*/
-
-/*
-----Steps to follow for User Login---
-get user details from frontend/body
-
-*/
-
-
-
-
-function learn(){
-
-}

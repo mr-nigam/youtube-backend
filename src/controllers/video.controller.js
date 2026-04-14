@@ -111,7 +111,7 @@ const getVideo = asyncHandler(async (req,res) =>{
     
     // 2. Increment channel total views
     await User.findByIdAndUpdate(req.user._id, {
-        $inc: { totalViews: 1 }
+        $inc: { views: 1 }
     });
 
     if(!video){

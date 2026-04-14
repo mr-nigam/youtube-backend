@@ -36,12 +36,3 @@ watchHistorySchema.plugin(mongooseAggregatePaginate);
 
 export const WatchHistory = mongoose
     .model("WatchHistory",watchHistorySchema);
-
-
-/*
-await WatchHistory.findOneAndUpdate(
-  { watchedBy: userId, video: videoId },
-  { $set: { watchedAt: new Date() } },
-  { upsert: true, new: true }
-);
-*/

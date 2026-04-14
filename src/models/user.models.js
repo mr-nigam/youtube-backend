@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
             trim: true,
-            index: true,
         },
         username: {
             type: String,
@@ -26,6 +25,7 @@ const userSchema = new mongoose.Schema(
             lowercase: true,
             unique: true,
             match: [/.+\@.+\..+/, "Please use a valid email"],
+            index: true
         },
         password: {
             type: String,
@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema(
             minlength: 8,
             select: false,
         },
-        avatar :{
+        avatar: {
             type: String,// cloudinary url
             required: true,
         },
@@ -49,10 +49,31 @@ const userSchema = new mongoose.Schema(
             type: String,// cloudinary public id
             default: ""
         },
+         totalViews: {
+            type: Number,
+            default: 0,
+        },
+        about: {
+            type: String,
+            trim: true,
+            maxlength: 500
+        },
         refreshToken: {
             type: String,
             select: false, // security improvement
         },
+        socialLinks: {
+            youtube: { type: String, default: "" },
+            instagram: { type: String, default: "" },
+            twitter: { type: String, default: "" },
+            website: { type: String, default: "" }
+        },
+        location: {
+            type: String,
+            trim: true,
+            default: ""
+        }
+       
     },
     {timestamps: true}
 );
