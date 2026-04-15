@@ -51,15 +51,34 @@ const videoSchema = new mongoose.Schema(
             size: {
                 type: Number // bytes
             },
-            tags: [{
-                type: String,
-                trim: true
-            }],
+            tags: {
+                type: [String],
+                default: [],
+            },
     },
     {timestamps: true}
 );
 
-videoSchema.index({owner: 1});
+// Filter + sorting optimization
+videoSchema.index({ owner: 1 });
+videoSchema.index({ owner: 1, views: -1 });
+videoSchema.index({ owner: 1, createdAt: -1 });
+
+// Full-text search (single text index)
+videoSchema.index(
+  {
+    title: "text",
+    description: "text",
+    tags: "text",
+  },
+  {
+    weights: {
+      title: 5,
+      tags: 3,
+      description: 1,
+    },
+  }
+);
 
 videoSchema.plugin(mongooseAggregatePaginate);
 

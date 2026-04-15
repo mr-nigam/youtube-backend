@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js";
 import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { isValidObjectId } from "mongoose";
 
 // import all models
 import { Video } from "../models/video.models.js";
@@ -289,14 +290,63 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 });
 
-// const getAllVideos = asyncHandler(async (req, res) => {
-//     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-//     //TODO: get all videos based on query, sort, pagination
-// });
+const getSearchedVideos = asyncHandler( async(req,res)=>{
+    let { page = 1, limit=10, sortBy, sortType, title, channelId} = req.query;
 
-// const togglePublishStatus = asyncHandler(async (req, res) => {
-//     const { videoId } = req.params
-// });
+    page = parseInt(page,10) || 1;
+    limit = parseInt(limit,10) || 10;
+    const skip = (page-1)*limit;
+
+    sortBy = sortBy?.trim() || "views";
+
+    const sortTypeVal = sortType?.toLowerCase();
+    const sortOrder = sortTypeVal === "asc"? 1: -1;
+
+    const filters = {};
+
+    if(channelId){
+        if(!isValidObjectId(channelId)){
+            throw new ApiError(400, "Invalid owner id");
+        }
+        filters.owner = channelId;
+    }
+
+    if(title){
+        filters.$text = {$search: title};
+    }
+    
+    const sortOptions = {
+        [sortBy]: sortOrder
+    };
+
+    const videos = await Video.find(filter)
+        .select("_id owner title thumbnail views duration")
+        .populate("owner", "_id username avatar")
+        .sort(title ? { score: { $meta: "textScore" } } : sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const totalVideos = await Video.countDocuments(filter);
+    
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    success: true,
+                    page,
+                    limit,
+                    totalVideos,
+                    totalPages: Math.ceil(totalVideos / limit),
+                    data: videos
+                },
+                `Videoes fetched successfully`
+            )
+        );
+});
+
 
 
 export {
@@ -304,5 +354,9 @@ export {
     changeThumbnail,
     updateVideoDetails,
     getVideo,
-    deleteVideo
+    deleteVideo,
+    getSearchedVideos,
 }
+
+
+

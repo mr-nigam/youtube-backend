@@ -9,6 +9,14 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose, { isValidObjectId } from "mongoose";
 
 
+const modelMap = {
+    Video,
+    Tweet,
+    Comment
+};
+
+const allowedModels = ["Video", "Comment", "Tweet"];
+
 const formatComment = (comment,user) => ({
     _id: comment._id,
     content: comment.content,
@@ -19,51 +27,118 @@ const formatComment = (comment,user) => ({
         username: user.username,
         avatar: user.avatar
     },
+    replyCount: replyCount,
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
     isEdited: comment.createdAt !== comment.updatedAt
 });
 
 const getComments = asyncHandler( async(req,res) =>{
-    const {itemId,model} = req.params;
+    let { page = 1, sortBy, sortType } = req.query;
+    page = parseInt(page,10) || 1;
+
+    const limit = 25;
+    const skip = (page-1)*limit;
+
+    const {itemId, model} = req.params;
+    if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
+        throw new ApiError(400, "Invalid item id or model");
+    }
+
+    const sortTypeVal = sortType?.toLowerCase();
+    const sortOrder = sortTypeVal === "asc"? 1: -1;
+
+    sortBy = sortBy?.trim() || "createdAt";
+
+    const filters = {
+        item: itemId,
+        onModel: model
+    };
+    const sortOptions = {
+        [sortBy]: sortOrder
+    };
+
+    const comments = await Comment.find(filters)
+        .populate("owner","username avatar")
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+    const totalComments = await Comment.countDocuments(filters);
+
+    const formattedComments = comments.map( 
+        comment => formatComment(comment,comment.owner)
+    );
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    page,
+                    limit,
+                    totalComments,
+                    totalPages: Math.ceil(totalComments / limit),
+                    data: formattedComments
+                },
+                "Comments fetched successfully"
+            )
+        );
 });
 
 const addComment = asyncHandler(async (req, res) => {
-    const {itemId,model} = req.params;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if(!itemId || !isValidObjectId(itemId) || !model){
-        throw new ApiError(400, `Invalid ${model} id`);
-    }
+    try{
+        const {itemId,model} = req.params;
 
-    const content = req.body.content?.trim();
-    if(!content){
-        throw new ApiError(400,"Please write something in comment");
-    }
-    
-    const modelMap = {
-        Video,
-        Tweet,
-        Comment
-    };
-    
-    const Model = modelMap[model];
-    if(!Model){
-        throw new ApiError(400, "Invalid item type");
-    }
-    const itemExists = await Model.exists({ _id: itemId });
-    
-    if (!itemExists) {
-        throw new ApiError(404, `${model} not found`);
-    }
-    
-    const comment = await Comment.create({
-        content: content, 
-        owner: req.user._id,
-        item: itemId,
-        onModel: model,
-    });
+        if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
+            throw new ApiError(400, `Invalid ${model} id`);
+        }
+        
+        const content = req.body.content?.trim();
+        if(!content){
+            throw new ApiError(400,"Please write something in comment");
+        }
+        
+        const Model = modelMap[model];
+        if(!Model){
+            throw new ApiError(400, "Invalid item type");
+        }
 
-    return res
+        const itemExists = await Model.exists({ _id: itemId }).session(session);
+        if(!itemExists){
+            throw new ApiError(404, `${model} not found`);
+        }
+    
+        const comment = await Comment.create(
+            [{
+                content,
+                owner: req.user._id,
+                item: itemId,
+                onModel: model,
+            }],
+            { session }
+        );
+
+        if (model === "Comment") {
+            await Promise.all([
+                Comment.findByIdAndUpdate(
+                    itemId,
+                    { $inc: { replyCount: 1 } },
+                    { session }
+                )
+            ]);
+        }
+
+        // ✅ Commit transaction
+        await session.commitTransaction();
+        session.endSession();
+
+        return res
         .status(201)
         .json(
             new ApiResponse(
@@ -72,6 +147,12 @@ const addComment = asyncHandler(async (req, res) => {
                 "Comment created successfully"
             )
         );
+    }catch(err){
+        //Rollback everything
+        await session.abortTransaction();
+        session.endSession();
+        throw new ApiError(400, err.message|| "Error while posting commment");
+    }
 });
 
 const updateComment = asyncHandler(async (req, res) => {
@@ -95,7 +176,7 @@ const updateComment = asyncHandler(async (req, res) => {
             $set: {content}
         },
         {
-            new: true, // return updated doc
+            new: true,
             runValidators: true
         }
     );
@@ -117,22 +198,50 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-    const {commentId} = req.params;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if(!commentId || !isValidObjectId(commentId)){
-        throw new ApiError(400, `Invalid comment id`);
-    }
 
-    const deletedComment = await Comment.findOneAndDelete({
-        _id: commentId,
-        owner: req.user._id
-    });
+    try{
+        const {commentId} = req.params;
+        if(!commentId || !isValidObjectId(commentId)){
+            throw new ApiError(400, `Invalid comment id`);
+        }
 
-    if (!deletedComment) {
-        throw new ApiError(404, "Comment not found or unauthorized");
-    }
+        const deletedComment = await Comment.findOneAndDelete({
+            _id: commentId,
+            owner: req.user._id
+        }).session(session);
 
-    return res
+        if (!deletedComment) {
+            throw new ApiError(404, "Comment not found or unauthorized");
+        }
+
+        //  Decrement reply count if it's a reply
+        if(deletedComment.onModel === "Comment" && deletedComment.item){
+            await Comment.findByIdAndUpdate(
+                deletedComment.item,
+                { 
+                    $inc: {replyCount: -1},
+                    $max: { replyCount: 0 }
+                },
+                {session}
+            );
+        }
+        
+         // delete its replies (cascade)
+        await Comment.deleteMany(
+            {
+                item: deletedComment._id,
+                onModel: "Comment"
+            },
+            {session}
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+        
+        return res
         .status(200)
         .json(
             new ApiResponse(
@@ -141,7 +250,11 @@ const deleteComment = asyncHandler(async (req, res) => {
                 "Comment deleted successfully"
             )
         );
-
+    }catch(err){
+        await session.abortTransaction();
+        session.endSession();
+        throw new ApiError(400, err.message|| "Error while deleting commment");
+    }
 });
 
 

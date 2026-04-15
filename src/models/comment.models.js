@@ -24,12 +24,16 @@ const commentSchema = new mongoose.Schema(
             type: String,
             required: true,
             enum: ["Video","Comment","Tweet"]
+        },
+        replyCount: {
+            type: Number,
+            default: 0
         }
     },
     {timestamps: true}
 );
 
-commentSchema.index({ item: 1, createdAt: -1 });
+commentSchema.index({ item: 1, onModel: 1, createdAt: -1 });
 
 commentSchema.plugin(mongooseAggregatePaginate);
 

@@ -9,6 +9,7 @@ import {
     updateVideoDetails,
     deleteVideo,
     changeThumbnail,
+    getSearchedVideos,
 } from "../controllers/video.controller.js";
 
 
@@ -34,5 +35,8 @@ router.route("/:videoId")
 router.route("/:videoId/thumbnail")
     .patch(validateVideo,upload.single("thumbnail"),changeThumbnail);
     
+router.route("/")
+    .get(getSearchedVideos)
+
 
 export default router;
