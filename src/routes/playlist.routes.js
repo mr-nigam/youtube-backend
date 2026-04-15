@@ -10,7 +10,7 @@ import {
     updatePlaylist,
     deletePlaylist,
     removeVideoFromPlaylist,
-    getPlaylistsUniversal
+    getSearchedPlaylists
 } from "../controllers/playlist.controller.js";
 
 
@@ -23,7 +23,7 @@ router.use(verifyJWT);
 // 📁 Playlists
 router.route("/")
     .post(createPlaylist)
-    .get(getPlaylistsUniversal);
+    .get(getSearchedPlaylists);
 
 router.route("/:playlistId")
     .get(getPlaylist)

@@ -1,7 +1,7 @@
 import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js";
-import mongoose from "mongoose";
+import mongoose, {isValidObjectId} from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { isValidObjectId } from "mongoose";
 
@@ -14,103 +14,113 @@ import { WatchHistory } from "../models/watchHistory.models.js";
 import { User } from "../models/user.models.js";
 
 
+const formattedVideo = (video,user)=>({
+    _id: video._id,
+    videoUrl: video.videoUrl,
+    thumbnailUrl: video.thumbnailUrl,
+    title: video.title,
+    description: video.description,
+    duration: video.duration,
+    views: video.views,
+    isPublished: video.isPublished,
+    owner:{
+        _id: user._id,
+        avatar: user.avatar,
+        username: user.username 
+    },
+    tags: video.tags,
+    createdAt: video.createdAt
+});
+
 const uploadVideo = asyncHandler(async (req,res) =>{
     const {tags} = req.body;
     const title = req.body.title?.replace(/"/g, "").trim();
-    const description = req.body.title?.replace(/"/g, "").trim();
+    const description = req.body.description?.replace(/"/g, "").trim();
     
     if(!title || !description){
         throw new ApiError(400,"Please provide full data");
     }
 
     const localThumbPath = req.files?.thumbnail?.[0]?.path;
-    if(!localThumbPath){
-        throw new ApiError(400,"Please upload thumbnail");
-    }
-
     const localFilePath = req.files?.videoFile?.[0]?.path;
-    if(!localFilePath){
-        throw new ApiError(400,"Please upload video");
+
+    if(!localThumbPath || !localFilePath){
+        throw new ApiError(400,"Thumbnail and video are required");
     }
 
-    const userId = req.user?._id;
-  
-    const thumbnail = await uploadOnCloudinary(localThumbPath);
-    if(!thumbnail){
-        throw new ApiError(500,"Fails on thumbnail upload");        
-    }
+    const user = req.user;
 
-    const videoFile = await uploadOnCloudinary(localFilePath);
-    if(!videoFile){
-        throw new ApiError(500,"Fails on video upload");        
-    }
-    
-     const processedTags = tags
+    let thumbnail = null;
+    let videoFile = null;
+    try{
+        videoFile = await uploadOnCloudinary(localFilePath);
+        if(!videoFile?.public_id){
+            throw new ApiError(500, "Video upload failed");        
+        }
+
+        thumbnail = await uploadOnCloudinary(localThumbPath);
+        if(!thumbnail?.public_id){
+            throw new ApiError(500, "Thumbnail upload failed");        
+        }
+
+        const processedTags = tags
         ? tags
             .split(",")
             .map(tag => tag.trim().replace(/"/g, ""))
             .filter(Boolean)
         : [];
 
-    const video = await Video.create({
-        cloudinaryPublicFileId: videoFile.public_id,
-        cloudinaryPublicThumbnailId: thumbnail.public_id,
-        videoUrl: videoFile.secure_url,
-        thumbnailUrl: thumbnail.secure_url,
-        title: title,
-        duration: videoFile.duration,
-        size: videoFile.bytes,
-        owner: userId,
-        description: description,
-        tags: processedTags
-    });
-    
-    const populatedVideo = await video.populate("owner", "username avatar");
+        const video = await Video.create({
+            cloudinaryPublicFileId: videoFile.public_id,
+            cloudinaryPublicThumbnailId: thumbnail.public_id,
+            videoUrl: videoFile.secure_url,
+            thumbnailUrl: thumbnail.secure_url,
+            title: title,
+            duration: videoFile.duration,
+            size: videoFile.bytes,
+            owner: user._id,
+            description: description,
+            tags: processedTags
+        });
 
-    return res
+        return res
         .status(201)
         .json(
             new ApiResponse(
                 201,
-                {
-                    _id: populatedVideo._id,
-                    videoUrl: populatedVideo.videoUrl,
-                    thumbnailUrl: populatedVideo.thumbnailUrl,
-                    title: populatedVideo.title,
-                    description: populatedVideo.description,
-                    duration: populatedVideo.duration,
-                    views: populatedVideo.views,
-                    isPublished: populatedVideo.isPublished,
-                    owner: populatedVideo.owner,
-                    tags: populatedVideo.tags,
-                    createdAt: populatedVideo.createdAt
-                },
+                formattedVideo(video,user),
                 "Video uploaded successfully"
             )
         );
+
+    }catch(err){
+        // rollback cloudinary
+        if(thumbnail?.public_id){
+            await deleteFromCloudinary(thumbnail.public_id,"image");
+        }
+        if(videoFile?.public_id){
+            await deleteFromCloudinary(videoFile.public_id,"video");
+        }
+        throw new ApiError(500, err.message || "Video upload failed");
+    }
 });
 
 const getVideo = asyncHandler(async (req,res) =>{
     const {videoId} = req.params;
 
-    if(!videoId){
+    if(!videoId || !isValidObjectId(videoId)){
         throw new ApiError(400,"Video id is missing");
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(videoId)) {
-        throw new ApiError(400, "Invalid video id");
     }
 
     const video = await Video.findByIdAndUpdate(
         videoId,
         { $inc: {views: 1}},
-        {new : true}
+        { new : true }
     )
-        .select("-cloudinaryPublicFileId -cloudinaryPublicThumbnailId -__v")
-        .populate("owner", "username avatar")
-        .lean();
+    .populate("owner", "username avatar")
+    .lean();
     
-    // 2. Increment channel total views
+    // Increment channel total views
     await User.findByIdAndUpdate(req.user._id, {
         $inc: { views: 1 }
     });
@@ -124,13 +134,14 @@ const getVideo = asyncHandler(async (req,res) =>{
         .json(
             new ApiResponse(
                 200,
-                video,
+                formattedVideo(video,video.owner),
                 "Video fetched successfully"
             )
         );
 });
 
 const changeThumbnail = asyncHandler(async (req,res) =>{
+
     const newThumnnailLocalPath = req?.file?.path;
     if(!newThumnnailLocalPath){
         throw new ApiError(400,"upload new thumbnail");
@@ -170,12 +181,7 @@ const changeThumbnail = asyncHandler(async (req,res) =>{
         .json(
             new ApiResponse(
                 200,
-                {
-                    _id: storedVideo._id,
-                    thumbnailUrl: storedVideo.thumbnailUrl,
-                    videoUrl: storedVideo.videoUrl,
-                    updatedAt: storedVideo.updatedAt
-                },
+                formattedVideo(storedVideo,req.user),
                 "Thumbnail updated successfully")
         );
 });
@@ -214,15 +220,7 @@ const updateVideoDetails = asyncHandler(async (req,res) =>{
         .json(
             new ApiResponse(
                 200,
-                {
-                    _id: storedVideo._id,
-                    title: storedVideo.title,
-                    description: storedVideo.description,
-                    tags: storedVideo.tags,
-                    thumbnailUrl: storedVideo.thumbnailUrl,
-                    videoUrl: storedVideo.videoUrl,
-                    updatedAt: storedVideo.updatedAt
-                },
+                formattedVideo(storedVideo,req.user),
                 "Details updated successfully"
             )
         );
@@ -346,7 +344,6 @@ const getSearchedVideos = asyncHandler( async(req,res)=>{
             )
         );
 });
-
 
 
 export {

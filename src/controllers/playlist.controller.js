@@ -53,6 +53,7 @@ const createPlaylist = asyncHandler( async(req,res) =>{
         )
 });
 
+// use pipeline ==> playlist->video->channel
 const getPlaylist = asyncHandler(async (req,res) =>{
     const {playlistId} = req.params;
 
@@ -305,7 +306,7 @@ const removeVideoFromPlaylist = asyncHandler(async(req,res) =>{
         
 });
 
-const getPlaylistsUniversal = asyncHandler(async (req,res) =>{
+const getSearchedPlaylists = asyncHandler(async (req,res) =>{
     
 });
 
@@ -319,6 +320,6 @@ export{
     updatePlaylist,
     deletePlaylist,
     removeVideoFromPlaylist,
-    getPlaylistsUniversal
+    getSearchedPlaylists
 }
 

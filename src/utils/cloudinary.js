@@ -11,35 +11,40 @@ cloudinary.config({
 
 
 const uploadOnCloudinary = async (localFilePath) =>{
-    try{
-        if(!localFilePath) return null;
+    if (!localFilePath) {
+        throw new ApiError(400, "File path is required");
+    }
 
+    try{
         const result = await cloudinary.uploader.upload(localFilePath,{
             resource_type: "auto"
         });
         
-        fs.unlinkSync(localFilePath);
+        // fs.unlinkSync(localFilePath);
+        await fs.promises.unlink(localFilePath);
 
         return result;
     }catch(err){
-        
-        if(localFilePath && fs.existsSync(localFilePath)){
-            fs.unlinkSync(localFilePath);
-        }
-        
-        return null;
+        // cleanup local file even on failure
+        try {
+            await fs.promises.unlink(localFilePath);
+        } catch {}
+
+        throw new ApiError(
+            500,
+            err.message || "Cloudinary upload failed"
+        );
     }
 };
 
 const deleteFromCloudinary = async(public_id, resourceType="image") =>{
-    try{
-        if(!public_id) return false;
+    if (!public_id) return false;
 
-        const result = await cloudinary.uploader.destroy(public_id, {
+    try{
+        return await cloudinary.uploader.destroy(public_id, {
             resource_type: resourceType
         });
-
-        return result;
+        
     }catch(err){
         throw new ApiError(
             500,
