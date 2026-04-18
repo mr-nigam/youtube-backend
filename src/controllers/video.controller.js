@@ -227,12 +227,14 @@ const updateVideoDetails = asyncHandler(async (req,res) =>{
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
+    const video = req.storedVideo;
     const videoId = req.storedVideo._id;
 
     const session = await mongoose.startSession();
 
-    const cloudinaryPublicFileId = videoId.cloudinaryPublicFileId
-    const cloudinaryPublicThumbnailId = videoId.cloudinaryPublicThumbnailId;
+    const cloudinaryPublicFileId = video.cloudinaryPublicFileId
+    const cloudinaryPublicThumbnailId = video.cloudinaryPublicThumbnailId;
+    
     try{
         await session.withTransaction(async ()=>{
             await Promise.all([

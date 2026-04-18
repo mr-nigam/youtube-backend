@@ -35,6 +35,8 @@ const commentSchema = new mongoose.Schema(
 
 commentSchema.index({ item: 1, onModel: 1, createdAt: -1 });
 
+commentSchema.index({ item: 1, onModel: 1});
+
 commentSchema.plugin(mongooseAggregatePaginate);
 
 

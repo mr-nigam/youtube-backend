@@ -121,3 +121,8 @@ dist
 
 # my additions
 .zlearn.js
+.comment.db.js
+.like.db.js
+.subs.db.js
+.user.db.js
+.video.db.js

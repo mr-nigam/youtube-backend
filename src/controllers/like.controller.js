@@ -5,6 +5,8 @@ import mongoose, {isValidObjectId} from "mongoose"
 import { Like } from "../models/like.models.js";
 
 
+const allowedModels = ["Video", "Comment", "Tweet"];
+
 const getLikesDetails = async(itemId,model)=>{
     const result = await Like.aggregate([
         {
@@ -39,17 +41,13 @@ const getLikesDetails = async(itemId,model)=>{
                         }
                     }
                 ],
-                totalLikes:[
-                    { $count: "count" }
-                ]
             }
         }
     ]);
 
-    const data = result[0] || { totalLikes: [], likes: [] };
+    const data = result[0] || { likes: [] };
 
     return {
-        totalLikes: data.totalLikes[0]?.count || 0,
         likesData: data.likes
     };
 
@@ -58,7 +56,7 @@ const getLikesDetails = async(itemId,model)=>{
 const toggleLike  = asyncHandler(async (req,res) =>{
    const {itemId, model} = req.params;
     
-    if(!itemId || !isValidObjectId(itemId) || !model){
+    if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
         throw new ApiError(400, `Invalid itemId or model`);
     }
 
@@ -98,46 +96,41 @@ const toggleLike  = asyncHandler(async (req,res) =>{
 const likesDetails = asyncHandler(async (req,res) =>{
     const {itemId, model} = req.body;
     
-    if(!itemId || !isValidObjectId(itemId) || !model){
+    if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
         throw new ApiError(400, `Invalid itemId or model`);
     }
     
-    const data = await getLikesDetails(itemId, model);
+    let {page=1} = req.query;
+    page = parseInt(page,10) || 1;
+    
+    const limit = 25;
+    const skip = (page-1)*limit;
+
+    const filters = {
+        item: itemId,
+        onModel: model
+    };
+
+    const likesData = await Like.find(filters)
+        .select("likedBy createdAt")
+        .sort({createdAt: -1})
+        .skip(skip)
+        .limit(limit)
+        .populate("likedBy","username avatar")
+        .lean();
 
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                data,
+                { likesData, page, limit },
                 "Likes data fetched successfully"
             )
         );
 });
 
-const likesCount = asyncHandler(async (req,res)=>{
-    const {itemId, model} = req.params;
-
-    if (!itemId || !isValidObjectId(itemId) || !model) {
-        throw new ApiError(400, "Invalid itemId or model");
-    }
-
-    const totalLikes = await Like.countDocuments({
-        item: itemId,
-        onModel: model
-    });
-
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            { totalLikes },
-            "Like count fetched successfully"
-        )
-    );
-});
-
 export{
     toggleLike,
     likesDetails,
-    likesCount
 }

@@ -1,6 +1,7 @@
 import { Comment } from "../models/comment.models.js";
 import { Video } from "../models/video.models.js";
 import { Tweet } from "../models/tweet.models.js";
+import { Like } from "../models/like.models.js";
 
 
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -197,10 +198,48 @@ const updateComment = asyncHandler(async (req, res) => {
 
 });
 
+const deleteCommentTree = async(rootId,session)=>{
+    const maxDepth = 10; 
+    let depth = 0;
+    let curLevel = [rootId];
+    let allIds = [rootId];
+
+    while(curLevel.length && depth<maxDepth){
+        depth++;
+        const children = await Comment.find(
+            {
+                item: {$in: curLevel},
+                onModel: "Comment"
+            },
+            {session}
+        )
+        const childIds = children.map(c => c._id);
+        
+        if(childIds.length === 0) break;
+        
+        allIds.push(...childIds);
+        curLevel = children;
+    }
+
+    // delete all likes
+    await Like.deleteMany(
+        {
+            item: {$in: allIds},
+            onModel: "Comment"
+        },
+        {session}
+    );
+
+    // delete all comments
+    await Like.deleteMany(
+        { _id: {$in: allIds}},
+        {session}
+    );
+};
+
 const deleteComment = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
-
 
     try{
         const {commentId} = req.params;
@@ -208,48 +247,52 @@ const deleteComment = asyncHandler(async (req, res) => {
             throw new ApiError(400, `Invalid comment id`);
         }
 
-        const deletedComment = await Comment.findOneAndDelete({
-            _id: commentId,
-            owner: req.user._id
-        }).session(session);
+        // delete comment and check ownerShip
+        const deletedComment = await Comment.findOneAndDelete(
+            {
+                _id: commentId,
+                owner: req.user._id
+            },
+            {session}
+        );
 
         if (!deletedComment) {
             throw new ApiError(404, "Comment not found or unauthorized");
         }
 
-        //  Decrement reply count if it's a reply
+        //  Decrement reply count if it's a reply   
         if(deletedComment.onModel === "Comment" && deletedComment.item){
             await Comment.findByIdAndUpdate(
                 deletedComment.item,
-                { 
-                    $inc: {replyCount: -1},
-                    $max: { replyCount: 0 }
-                },
+                [
+                    {
+                        $set: {
+                            replyCount: {
+                                $max: [{$subtract: ["$replyCount", 1]},0]
+                            }
+                        }
+                    }
+                ],
                 {session}
             );
         }
         
-         // delete its replies (cascade)
-        await Comment.deleteMany(
-            {
-                item: deletedComment._id,
-                onModel: "Comment"
-            },
-            {session}
-        );
+        // Delete full tree (root + all nested replies + likes)
+        await deleteCommentTree(commentId, session);
 
         await session.commitTransaction();
         session.endSession();
         
         return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                true,
-                "Comment deleted successfully"
-            )
-        );
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    true,
+                    "Comment deleted successfully"
+                )
+            );
+
     }catch(err){
         await session.abortTransaction();
         session.endSession();

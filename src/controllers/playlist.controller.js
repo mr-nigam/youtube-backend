@@ -53,14 +53,22 @@ const createPlaylist = asyncHandler( async(req,res) =>{
         )
 });
 
-// use pipeline ==> playlist->video->channel
+// use pipeline + pagination ==> playlist->video->channel
 const getPlaylist = asyncHandler(async (req,res) =>{
     const {playlistId} = req.params;
-
     if(!playlistId || !isValidObjectId(playlistId)){
         throw new ApiError(400, "Invalid playlist id");
     }
 
+    let {page = 1, limit, sortBy, sortType} = req.query;
+    
+    page = parseInt(page,10) || 1;
+    limit = Math.min(parseInt(limit, 10) || 25, 50);
+    const skip = (page - 1) * limit;
+
+    const sortOrder = sortType?.trim()?.toLowerCase() ==="asc"? 1: -1;
+
+    
     const playlist = await Playlist.findOne({
         _id: playlistId,    
         $or: [
