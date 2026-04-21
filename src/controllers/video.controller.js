@@ -123,19 +123,35 @@ const getVideo = asyncHandler(async (req,res) =>{
     }
 
     const video = await Video.findByIdAndUpdate(
-        videoId,
+        videoId,    
         { $inc: {views: 1}},
         { new : true }
     )
     .populate("owner", "username avatar")
     .lean();
     
+    if(!video){
+        throw new ApiError(404,"Video not found");
+    }
+
     // Increment channel total views
     await User.findByIdAndUpdate(video.owner._id, {
-        $inc: { totalViews: 1 }
+        $inc: { totalViews: 1 },
+        
     });
 
-    await WatchHistory.findOneAndUpdate(
+    const comments = await Comment.find(
+        {item: videoId, onModel: "Video"}
+    )
+    .select("_id conent owner")
+    .populate("owner", "username avatar")
+    .lean();
+
+    const likecount = await Like.countDocuments(
+        {item: videoId, onModel: "Video"}
+    );
+
+    const history = await WatchHistory.findOneAndUpdate(
         {
             watchedBy: req.user._id,
             video: video._id,
@@ -154,17 +170,19 @@ const getVideo = asyncHandler(async (req,res) =>{
             new: true
         }
     );
-    
-    if(!video){
-        throw new ApiError(404,"Video not found");
-    }
 
+    //console.log(history);
+    
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                formattedVideo(video,video.owner),
+                {
+                    videoList: formattedVideo(video,video.owner),
+                    comments: comments,
+                    likecount: likecount
+                },
                 "Video fetched successfully"
             )
         );

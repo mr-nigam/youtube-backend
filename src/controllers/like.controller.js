@@ -54,8 +54,9 @@ const getLikesDetails = async(itemId,model)=>{
 };
 
 const toggleLike  = asyncHandler(async (req,res) =>{
-   const {itemId, model} = req.params;
-    
+    const {itemId} = req.params;
+    const model = req.body.model?.trim();
+
     if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
         throw new ApiError(400, `Invalid itemId or model`);
     }
@@ -79,14 +80,14 @@ const toggleLike  = asyncHandler(async (req,res) =>{
         message = `${model} liked successfully`;
     }
     
-    const {totalLikes, likesData} = await getLikesDetails(itemId, model);
+    // const {totalLikes, likesData} = await getLikesDetails(itemId, model);
 
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                { totalLikes, likesData },
+                {success: true},
                 message
             )
         );
@@ -94,8 +95,9 @@ const toggleLike  = asyncHandler(async (req,res) =>{
 });
 
 const likesDetails = asyncHandler(async (req,res) =>{
-    const {itemId, model} = req.body;
-    
+    const {itemId} = req.params;
+    const model = req.body.model?.trim();
+
     if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
         throw new ApiError(400, `Invalid itemId or model`);
     }

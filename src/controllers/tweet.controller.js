@@ -4,7 +4,8 @@ import {User} from "../models/user.models.js"
 import ApiError from "../utils/ApiError.js";
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-
+import { Like } from "../models/like.models.js";
+import { Comment } from "../models/comment.models.js";
 
 const formatTweet = (tweet,user)=>{
     const isEdited = tweet.createdAt !== tweet.updatedAt;
@@ -190,13 +191,26 @@ const getTweet = asyncHandler(async (req,res)=>{
     if(!tweet){
         throw new ApiError(404, "Tweet not found");
     }
+    
+    const like = await Like.countDocuments(
+        {item: tweetId, onModel: "Tweet"}
+    );
+    const comments = await Comment.countDocuments(
+        {item: tweetId, onModel: "Tweet"}
+    )
+    .select("_id content createdAT owner")
+    .populate("owner" ,"username avatar");
 
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                formatTweet(tweet, req.user),
+                {
+                    tweets: formatTweet(tweet, req.user),
+                    likes: like,
+                    comments: comments
+                },
                 "Tweet fecthed successfully"
             )
         );

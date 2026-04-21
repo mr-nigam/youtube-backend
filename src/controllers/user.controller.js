@@ -14,6 +14,7 @@ import { Comment } from "../models/comment.models.js";
 import { Tweet } from "../models/tweet.models.js";
 import { Subscription } from "../models/subscription.models.js";
 import { Playlist } from "../models/playlist.models.js";
+import { WatchHistory } from "../models/watchHistory.models.js";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -524,21 +525,24 @@ const getChannelProfile = asyncHandler(async (req,res) => {
         );
 });
 
-const getWatchHistory = asyncHandler (async (req,res) => {
-    const userId = new mongoose.Types.ObjectId(req.user._id);
-
-    const details = await User.aggregate([
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const history = await WatchHistory.aggregate([
         {
             $match: {
-                _id: userId 
+                watchedBy: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $sort: {
+                watchedAt: -1
             }
         },
         {
             $lookup: {
                 from: "videos",
-                localField: "watchHistory",
-                foreignField : "_id",
-                as: "watchHistory",
+                localField: "video",
+                foreignField: "_id",
+                as: "video",
                 pipeline: [
                     {
                         $lookup: {
@@ -552,7 +556,6 @@ const getWatchHistory = asyncHandler (async (req,res) => {
                                         fullName: 1,
                                         username: 1,
                                         avatar: 1
-
                                     }
                                 }
                             ]
@@ -560,29 +563,100 @@ const getWatchHistory = asyncHandler (async (req,res) => {
                     },
                     {
                         $addFields: {
-                            owner: {
-                                $first: "$owner"
-                            }
+                            owner: { $first: "$owner" }
                         }
                     }
                 ]
-            }   
+            }
         },
+        {
+            $addFields: {
+                video: { $first: "$video" }
+            }
+        },
+        {
+            $replaceRoot: {
+                newRoot: "$video"
+            }
+        },
+        {
+            $project: {
+                title: 1,
+                thumbnailUrl: 1,
+                views: 1,
+                owner: 1
+            }
+        }
     ]);
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                {
-                    watchHistory:
-                        details[0]?.watchHistory ?? []
-                },
-                "Watch history fetched successfully"
-            )
-        );
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            history,
+            "Watch history fetched successfully"
+        )
+    );
 });
+
+// const getWatchHistory = asyncHandler (async (req,res) => {
+//     const userId = new mongoose.Types.ObjectId(req.user._id);
+
+//     const details = await User.aggregate([
+//         {
+//             $match: {
+//                 _id: userId 
+//             }
+//         },
+//         {
+//             $lookup: {
+//                 from: "videos",
+//                 localField: "watchHistory",
+//                 foreignField : "_id",
+//                 as: "watchHistory",
+//                 pipeline: [
+//                     {
+//                         $lookup: {
+//                             from: "users",
+//                             localField: "owner",
+//                             foreignField: "_id",
+//                             as: "owner",
+//                             pipeline: [
+//                                 {
+//                                     $project: {
+//                                         fullName: 1,
+//                                         username: 1,
+//                                         avatar: 1
+
+//                                     }
+//                                 }
+//                             ]
+//                         }
+//                     },
+//                     {
+//                         $addFields: {
+//                             owner: {
+//                                 $first: "$owner"
+//                             }
+//                         }
+//                     }
+//                 ]
+//             }   
+//         },
+//     ]);
+
+//     return res
+//         .status(200)
+//         .json(
+//             new ApiResponse(
+//                 200,
+//                 {
+//                     watchHistory:
+//                         details[0]?.watchHistory ?? []
+//                 },
+//                 "Watch history fetched successfully"
+//             )
+//         );
+// });
 
 const deleteUser = asyncHandler(async (req,res)=>{
     const user = req.user;

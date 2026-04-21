@@ -24,9 +24,12 @@ const likeSchema = new mongoose.Schema(
 );
 
 likeSchema.index(
-  {likedBy: 1, item: 1, onModel: 1},
-  {unique: true}
+  {likedBy: 1, item: 1, onModel: 1}
 );
+// likeSchema.index(
+//   {likedBy: 1, item: 1, onModel: 1},
+//   {unique: true}
+// );
 
 likeSchema.index({item: 1, onModel: 1});
 

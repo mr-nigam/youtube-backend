@@ -12,10 +12,10 @@ const router = Router();
 
 router.use(verifyJWT);
 
-router.route("/:model/:itemId")
+router.route("/:itemId")
     .post(toggleLike)
 
-router.route("/:model/:itemId/details")
+router.route("/:itemId/details")
     .get(likesDetails)
 
 

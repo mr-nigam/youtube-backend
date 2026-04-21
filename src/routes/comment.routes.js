@@ -16,7 +16,7 @@ const router = Router();
 router.use(verifyJWT);
 
 // change layout of this
-router.route("/model/:itemId")
+router.route("/:itemId")
     .get(getComments)
     .post(addComment)
 

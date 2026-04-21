@@ -28,7 +28,7 @@ const formatComment = (comment,user) => ({
         username: user.username,
         avatar: user.avatar
     },
-    replyCount: replyCount,
+    replyCount: comment.replyCount,
     createdAt: comment.createdAt,
     updatedAt: comment.updatedAt,
     isEdited: comment.createdAt !== comment.updatedAt
@@ -41,7 +41,8 @@ const getComments = asyncHandler( async(req,res) =>{
     const limit = 25;
     const skip = (page-1)*limit;
 
-    const {itemId, model} = req.params;
+    const {itemId} = req.params;
+    const model = req.query.model;
     if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
         throw new ApiError(400, "Invalid item id or model");
     }
@@ -91,11 +92,12 @@ const getComments = asyncHandler( async(req,res) =>{
 
 const addComment = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
-    session.startTransaction();
 
     try{
-        const {itemId,model} = req.params;
+        session.startTransaction();
 
+        const {itemId} = req.params;
+        const model = req.body.model.trim();
         if(!itemId || !isValidObjectId(itemId) || !allowedModels.includes(model)){
             throw new ApiError(400, `Invalid ${model} id`);
         }
@@ -137,8 +139,7 @@ const addComment = asyncHandler(async (req, res) => {
 
         // ✅ Commit transaction
         await session.commitTransaction();
-        session.endSession();
-
+    
         return res
         .status(201)
         .json(
@@ -150,9 +151,12 @@ const addComment = asyncHandler(async (req, res) => {
         );
     }catch(err){
         //Rollback everything
-        await session.abortTransaction();
-        session.endSession();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
         throw new ApiError(400, err.message|| "Error while posting commment");
+    }finally{
+        session.endSession();
     }
 });
 
@@ -211,8 +215,8 @@ const deleteCommentTree = async(rootId,session)=>{
                 item: {$in: curLevel},
                 onModel: "Comment"
             },
-            {session}
-        )
+        ).session(session);
+        
         const childIds = children.map(c => c._id);
         
         if(childIds.length === 0) break;
@@ -239,9 +243,10 @@ const deleteCommentTree = async(rootId,session)=>{
 
 const deleteComment = asyncHandler(async (req, res) => {
     const session = await mongoose.startSession();
-    session.startTransaction();
 
     try{
+        session.startTransaction();
+
         const {commentId} = req.params;
         if(!commentId || !isValidObjectId(commentId)){
             throw new ApiError(400, `Invalid comment id`);
@@ -281,7 +286,6 @@ const deleteComment = asyncHandler(async (req, res) => {
         await deleteCommentTree(commentId, session);
 
         await session.commitTransaction();
-        session.endSession();
         
         return res
             .status(200)
@@ -294,9 +298,13 @@ const deleteComment = asyncHandler(async (req, res) => {
             );
 
     }catch(err){
-        await session.abortTransaction();
-        session.endSession();
+        if(session.inTransaction()){
+            await session.abortTransaction();
+        }
+        
         throw new ApiError(400, err.message|| "Error while deleting commment");
+    }finally{
+        session.endSession();
     }
 });
 
