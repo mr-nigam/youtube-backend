@@ -27,7 +27,7 @@ const playlistSchema = new mongoose.Schema(
         privacy: {
             type: String,
             enum: ["public","private","unlisted"],
-            default: "public    "
+            default: "public"
         },
     },
     {timestamps: true}

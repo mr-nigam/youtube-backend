@@ -236,13 +236,12 @@ const deletePlaylist = asyncHandler( async(req,res) =>{
 });
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params;
+    const {playlistId, videoId} = req.params;
     
     if(!playlistId || !isValidObjectId(playlistId)){
         throw new ApiError(400, "Invalid playlist id");
     }
 
-    const {videoId} = req.body;
     if(!videoId || !isValidObjectId(videoId)){
         throw new ApiError(400, "Invalid video id");
     }

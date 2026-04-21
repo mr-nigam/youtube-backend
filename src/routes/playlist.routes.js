@@ -25,6 +25,9 @@ router.route("/")
     .post(createPlaylist)
     .get(getSearchedPlaylists);
 
+router.route("/me/")
+    .get(getPlaylists);
+
 router.route("/:playlistId")
     .get(getPlaylist)
     .patch(updatePlaylist)
@@ -33,14 +36,13 @@ router.route("/:playlistId")
 router.route("/channels/:channelId")
     .get(getPlaylistsByChannel);
 
-router.route("/me/")
-    .get(getPlaylists);
 
-// video id is in body
-router.route("/:playlistId/videos")
-    .post(addVideoToPlaylist);
+// // video id is in body
+// router.route("/:playlistId/videos")
+//     .post(addVideoToPlaylist);
 
 router.route("/:playlistId/videos/:videoId")
+    .post(addVideoToPlaylist)
     .delete(removeVideoFromPlaylist);    
 
 
