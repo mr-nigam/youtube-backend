@@ -3,7 +3,6 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js";
 import mongoose, {isValidObjectId} from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { isValidObjectId } from "mongoose";
 
 // import all models
 import { Video } from "../models/video.models.js";
@@ -15,7 +14,7 @@ import { User } from "../models/user.models.js";
 
 
 const formattedVideo = (video,user)=>({
-    _id: video._id,
+    id: video._id,
     videoUrl: video.videoUrl,
     thumbnailUrl: video.thumbnailUrl,
     title: video.title,
@@ -48,27 +47,38 @@ const uploadVideo = asyncHandler(async (req,res) =>{
         throw new ApiError(400,"Thumbnail and video are required");
     }
 
-    const user = req.user;
 
     let thumbnail = null;
     let videoFile = null;
     try{
-        videoFile = await uploadOnCloudinary(localFilePath);
+
+        [thumbnail,videoFile] = await Promise.all([
+            uploadOnCloudinary(localThumbPath),
+            uploadOnCloudinary(localFilePath)  
+        ]);
+
+
+        if(!thumbnail?.public_id){
+            throw new ApiError(500, "Thumbnail upload failed");        
+        }
+        
         if(!videoFile?.public_id){
             throw new ApiError(500, "Video upload failed");        
         }
 
-        thumbnail = await uploadOnCloudinary(localThumbPath);
-        if(!thumbnail?.public_id){
-            throw new ApiError(500, "Thumbnail upload failed");        
-        }
 
-        const processedTags = tags
-        ? tags
-            .split(",")
-            .map(tag => tag.trim().replace(/"/g, ""))
-            .filter(Boolean)
-        : [];
+       const processedTags = tags
+            ? [...new Set(
+                tags
+                    .split(",")
+                    .map(tag =>
+                        tag.trim()
+                           .replace(/"/g, "")
+                           .toLowerCase()
+                    )
+                    .filter(Boolean)
+              )]
+            : [];
 
         const video = await Video.create({
             cloudinaryPublicFileId: videoFile.public_id,
@@ -78,7 +88,7 @@ const uploadVideo = asyncHandler(async (req,res) =>{
             title: title,
             duration: videoFile.duration,
             size: videoFile.bytes,
-            owner: user._id,
+            owner: req.user._id,
             description: description,
             tags: processedTags
         });
@@ -88,13 +98,13 @@ const uploadVideo = asyncHandler(async (req,res) =>{
         .json(
             new ApiResponse(
                 201,
-                formattedVideo(video,user),
+                formattedVideo(video,req.user),
                 "Video uploaded successfully"
             )
         );
 
     }catch(err){
-        // rollback cloudinary
+        // rollback cloudinary  
         if(thumbnail?.public_id){
             await deleteFromCloudinary(thumbnail.public_id,"image");
         }
@@ -121,10 +131,30 @@ const getVideo = asyncHandler(async (req,res) =>{
     .lean();
     
     // Increment channel total views
-    await User.findByIdAndUpdate(req.user._id, {
-        $inc: { views: 1 }
+    await User.findByIdAndUpdate(video.owner._id, {
+        $inc: { totalViews: 1 }
     });
 
+    await WatchHistory.findOneAndUpdate(
+        {
+            watchedBy: req.user._id,
+            video: video._id,
+        },
+        {
+            $set: {
+                watchedAt: new Date()
+            },
+            $setOnInsert: {
+                watchedBy: req.user._id,
+                video: video._id,
+            }
+        },
+        {
+            upsert: true,
+            new: true
+        }
+    );
+    
     if(!video){
         throw new ApiError(404,"Video not found");
     }
@@ -140,87 +170,149 @@ const getVideo = asyncHandler(async (req,res) =>{
         );
 });
 
-const changeThumbnail = asyncHandler(async (req,res) =>{
+const changeThumbnail = asyncHandler(async (req, res) => {
+    const newThumbnailLocalPath = req.file?.path;
 
-    const newThumnnailLocalPath = req?.file?.path;
-    if(!newThumnnailLocalPath){
-        throw new ApiError(400,"upload new thumbnail");
-    }
-    
-    if(!req.storedVideo) {
-        throw new ApiError(404, "Video not found");
+    if (!newThumbnailLocalPath) {
+        throw new ApiError(400, "Please upload new thumbnail");
     }
 
-    //middleware m storedVideo dal denge
+    // already validated in middleware
     const storedVideo = req.storedVideo;
 
-    const oldThumbnail = storedVideo.cloudinaryPublicThumbnailId;
-    
-    // 1️⃣ upload new
-    const newThumbnail = await uploadOnCloudinary(newThumnnailLocalPath);
-    if(!newThumbnail){
-        throw new ApiError(500,"Issue in uploading new thumbnail");
-    }
-    
-    // 2️⃣ delete old
-    try {
-        if (oldThumbnail) {
-            await deleteFromCloudinary(oldThumbnail);
-        }
-    } catch (error) {
-        console.error("Failed to delete old thumbnail:", error);
-    }
+    const oldThumbnailId = storedVideo.cloudinaryPublicThumbnailId;
 
-    // 3️⃣ save db
-    storedVideo.cloudinaryPublicThumbnailId = newThumbnail.public_id;
-    storedVideo.thumbnailUrl = newThumbnail.secure_url;
-    await storedVideo.save({ validateBeforeSave: false});
-    
-    return res
-        .status(200)
-        .json(
+    let newThumbnail;
+
+    try {
+        // 1. Upload new thumbnail
+        newThumbnail = await uploadOnCloudinary(
+            newThumbnailLocalPath
+        );
+
+        if (!newThumbnail?.public_id) {
+            throw new ApiError(
+                500,
+                "Failed to upload new thumbnail"
+            );
+        }
+
+        // 2. Update database
+        storedVideo.cloudinaryPublicThumbnailId =
+            newThumbnail.public_id;
+
+        storedVideo.thumbnailUrl =
+            newThumbnail.secure_url;
+
+        await storedVideo.save({
+            validateBeforeSave: false
+        });
+
+        // 3. Delete old thumbnail after success
+        if (
+            oldThumbnailId &&
+            oldThumbnailId !== newThumbnail.public_id
+        ) {
+            try {
+                await deleteFromCloudinary(
+                    oldThumbnailId,
+                    "image"
+                );
+            } catch (error) {
+                console.error(
+                    "Old thumbnail delete failed:",
+                    error.message
+                );
+            }
+        }
+
+        return res.status(200).json(
             new ApiResponse(
                 200,
-                formattedVideo(storedVideo,req.user),
-                "Thumbnail updated successfully")
+                {
+                    thumbnail:
+                        storedVideo.thumbnailUrl
+                },
+                "Thumbnail updated successfully"
+            )
         );
+    } catch (error) {
+        // rollback newly uploaded image if DB save failed
+        if (newThumbnail?.public_id) {
+            try {
+                await deleteFromCloudinary(
+                    newThumbnail.public_id,
+                    "image"
+                );
+            } catch {}
+        }
+
+        throw new ApiError(
+            500,
+            error.message ||
+                "Failed to update thumbnail"
+        );
+    }
 });
 
 const updateVideoDetails = asyncHandler(async (req,res) =>{
-    const {tags} = req.body;
+    const tags = req.body.tags;
     const title = req.body.title?.replace(/"/g, "").trim();
     const description = req.body.description?.replace(/"/g, "").trim();
 
     if(!title && !description && !tags){
-        throw new ApiError(400,"Details are misssing");
+        throw new ApiError(400,"No details provided ");
     }
 
-    if(!req.storedVideo){
-        throw new ApiError(404, "Video not found");
-    }
-    //middleware m storedVideo dal denge
-    const storedVideo = req.storedVideo;
+    const updateFields = {};
 
-    if(title){
-        storedVideo.title = title;
-    }
-    if(description){
-        storedVideo.description = description;
+    if (title) {
+        updateFields.title = title;
     }
 
-    if(tags){
-        storedVideo.tags = tags.split(",")
-                .map(tag => tag.replace(/"/g, "")
-                .trim()).filter(Boolean);
+    if (description) {
+        updateFields.description = description;
     }
-    await storedVideo.save({validateBeforeSave: false});
+
+    if (tags) {
+        updateFields.tags = [
+            ...new Set(
+                tags
+                    .split(",")
+                    .map(tag =>
+                        tag
+                            .replace(/"/g, "")
+                            .trim()
+                            .toLowerCase()
+                    )
+                    .filter(Boolean)
+            )
+        ];
+    }
+
+    
+    const updatedVideo =
+        await Video.findByIdAndUpdate(
+            req.storedVideo._id,
+            {
+                $set: updateFields
+            },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+    if(!updatedVideo){
+        throw new ApiError(404, "Video not found" );
+    }
 
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                formattedVideo(storedVideo,req.user),
+                formattedVideo(updatedVideo,req.user),
                 "Details updated successfully"
             )
         );
@@ -232,8 +324,8 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
     const session = await mongoose.startSession();
 
-    const cloudinaryPublicFileId = video.cloudinaryPublicFileId
-    const cloudinaryPublicThumbnailId = video.cloudinaryPublicThumbnailId;
+    const PublicVideoFileId = video.cloudinaryPublicFileId
+    const PublicThumbnailId = video.cloudinaryPublicThumbnailId;
     
     try{
         await session.withTransaction(async ()=>{
@@ -261,11 +353,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
         
         //----- Delete data from clodunary
         try{
-            if(cloudinaryPublicFileId){
-                await deleteFromCloudinary(cloudinaryPublicFileId,"video");
+            if(PublicVideoFileId){
+                await deleteFromCloudinary(PublicVideoFileId,"video");
             }
-            if(cloudinaryPublicThumbnailId){
-                await deleteFromCloudinary(cloudinaryPublicThumbnailId);   
+            if(PublicThumbnailId){
+                await deleteFromCloudinary(PublicThumbnailId);   
             }
             console.log("Cloudinary deletion done");
         }catch(err){
@@ -319,7 +411,7 @@ const getSearchedVideos = asyncHandler( async(req,res)=>{
         [sortBy]: sortOrder
     };
 
-    const videos = await Video.find(filter)
+    const videos = await Video.find(filters)
         .select("_id owner title thumbnail views duration")
         .populate("owner", "_id username avatar")
         .sort(title ? { score: { $meta: "textScore" } } : sortOptions)
@@ -327,7 +419,7 @@ const getSearchedVideos = asyncHandler( async(req,res)=>{
         .limit(limit)
         .lean();
 
-    const totalVideos = await Video.countDocuments(filter);
+    const totalVideos = await Video.countDocuments(filters);
     
     return res
         .status(200)

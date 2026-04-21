@@ -120,7 +120,7 @@ const addComment = asyncHandler(async (req, res) => {
                 content,
                 owner: req.user._id,
                 item: itemId,
-                onModel: model,
+                onModel: model, 
             }],
             { session }
         );

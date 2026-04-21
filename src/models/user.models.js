@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
             type: String,// cloudinary public id
             default: ""
         },
-         totalViews: {
+        totalViews: {
             type: Number,
             default: 0,
         },

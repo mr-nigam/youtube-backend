@@ -36,28 +36,29 @@ router.route("/auth/login").post(loginUser);
 router.route("/auth/refresh-token").post(refreshAccessToken);
 
 
+router.use(verifyJWT);
 // 🔐 Protected routes
-router.route("/auth/logout").post(verifyJWT, logoutUser);
+router.route("/auth/logout").post(logoutUser);
 
 router.route("/me")
-  .get(verifyJWT, getCurrentUser)
-  .patch(verifyJWT, updateAccountDetails)
-  .delete(verifyJWT, validateDeleteUser, deleteUser);
+  .get(getCurrentUser)
+  .patch(updateAccountDetails)
+  .delete(validateDeleteUser, deleteUser);
 
 router.route("/me/password")
-  .post(verifyJWT, changeCurrentPassword);
+  .post(changeCurrentPassword);
 
 router.route("/me/avatar")
-  .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+  .patch(upload.single("avatar"), updateUserAvatar);
 
 router.route("/me/cover-image")
-  .patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage);
+  .patch(upload.single("coverImage"), updateUserCoverImage);
 
 router.route("/:channelId")
-  .get(verifyJWT, getChannelProfile);
+  .get(getChannelProfile);
 
 router.route("/me/watch-history")
-  .get(verifyJWT, getWatchHistory);
+  .get(getWatchHistory);
 
 
 export default router;

@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import mongoose from "mongoose";
+import mongoose,{isValidObjectId} from "mongoose";
 import pLimit from "p-limit";
 
 // import all models
@@ -32,10 +32,18 @@ const generateAccessAndRefreshToken = async (userId) => {
     }
 }
 
-const getCookieOptions = () => ({
+const getAccessCookieOptions = () => ({
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict"
+    sameSite: "strict",
+    maxAge: 15 * 60 * 1000 // 15 min
+});
+
+const getRefreshCookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 });
 
 const registerUser = asyncHandler(async (req,res) => {
@@ -95,10 +103,8 @@ const registerUser = asyncHandler(async (req,res) => {
             username: usernameLower
         });
 
-        const createdUser = await User.findById(user._id)
-        .select("-password -__v -watchHistory -subscriptions -subscribers -refreshToken");
         
-        if(!createdUser){
+        if(!user){
             throw new ApiError(500, "User creation failed");
         }
 
@@ -107,7 +113,12 @@ const registerUser = asyncHandler(async (req,res) => {
         .json(
             new ApiResponse(
                 201,
-                createdUser,
+                {
+                    id: user._id.toString(),
+                    username: user.username,
+                    fullName: user.fullName,
+                    email: user.email
+                },
                 "User registered Successfully"
             )
         );
@@ -133,20 +144,19 @@ const registerUser = asyncHandler(async (req,res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-
     const {username,email,password} = req.body;
     
     if((!username && !email) || !password){
         throw new ApiError(400,"username/email and password required");
     }
     
-    // const normalizedEmail = email?.trim().toLowerCase().replace(/"/g, "");
-    // const usernameLower = username.trim().toLowerCase();
+    const normalizedEmail = email?.trim().toLowerCase().replace(/"/g, "");
+    const usernameLower = username.trim().toLowerCase();
     
     const user = await User.findOne({
         $or: [
-            username && { username: username.toLowerCase() },
-            email && { email: email.trim().toLowerCase() }
+            username && { username: usernameLower },
+            email && { email: normalizedEmail }
         ].filter(Boolean)
     }).select("+password");
 
@@ -162,22 +172,22 @@ const loginUser = asyncHandler(async (req, res) => {
 
     const {accessToken,refreshToken} = await generateAccessAndRefreshToken(user._id);
     
-    // optional steps
-    const loggedinUser = await User.findById(user._id)
-        .select("-refreshToken -password");
-        
+    const safeUser = {
+        id: user._id.toString(),
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        avatar: user.avatar,
+        coverImage: user.coverImage
+    };
     return res
         .status(200)
-        .cookie("accessToken",accessToken,getCookieOptions())
-        .cookie("refreshToken",refreshToken,getCookieOptions())
+        .cookie("accessToken",accessToken,getAccessCookieOptions())
+        .cookie("refreshToken",refreshToken,getRefreshCookieOptions())
         .json(
             new ApiResponse(
                 200,
-                {
-                    user: loggedinUser,
-                    accessToken,
-                    refreshToken
-                },
+                {user: safeUser},
                 "User logged in successfully"
             )
         );
@@ -192,13 +202,12 @@ const logoutUser = asyncHandler(async (req,res) => {
                 refreshToken: 1
             }
         },
-        { returnDocument: "after"}
     )
     
     return res
         .status(200)
-        .clearCookie("accessToken",getCookieOptions())
-        .clearCookie("refreshToken",getCookieOptions())
+        .clearCookie("accessToken",getAccessCookieOptions())
+        .clearCookie("refreshToken",getRefreshCookieOptions())
         .json(
             new ApiResponse(200,{},"User logged Out")
         );
@@ -234,22 +243,16 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
         const {accessToken,refreshToken} = 
             await generateAccessAndRefreshToken(user._id);
 
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
-
-        // console.log("refreshAccessToken is working fine");
         return res
             .status(200)
-            .cookie("accessToken",accessToken,getCookieOptions())
-            .cookie("refreshToken",refreshToken,getCookieOptions())
+            .cookie("accessToken",accessToken,getAccessCookieOptions())
+            .cookie("refreshToken",refreshToken,getRefreshCookieOptions())
             .json(
                 new ApiResponse(
                     200,
-                    {
-                        accessToken,
-                        refreshToken
-                    },
-                    "Access token refresh successfully"
+                    {},
+                    "Access token refresh successfully",
+                    { refreshedAt: Date.now()}
                 )
             );
             
@@ -276,9 +279,9 @@ const changeCurrentPassword = asyncHandler(async (req,res) => {
         throw new ApiError(404,"User not found");
     }
 
-    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    const isValid = await user.isPasswordCorrect(oldPassword);
 
-    if(!isPasswordCorrect){
+    if(!isValid){
         throw new ApiError(400,"Invalid Password");
     }
 
@@ -293,12 +296,24 @@ const changeCurrentPassword = asyncHandler(async (req,res) => {
 });
 
 const getCurrentUser = asyncHandler(async (req,res) => {
+    const safeUser = {
+        id: req.user._id,
+        username: req.user.username,
+        fullName: req.user.fullName,
+        email: req.user.email,
+        avatar: req.user.avatar,
+        coverImage: req.user.coverImage,
+        location: req.user.location,
+        socialLinks: req.user.socialLinks,
+        totalViews: req.user.totalViews
+    };
+
     return res
         .status(200)
         .json(
             new ApiResponse(
                 200,
-                {user: req.user},
+                {user: safeUser},
                 "Current user fethed successfully"
             )
         )
@@ -331,7 +346,12 @@ const updateAccountDetails = asyncHandler(async (req,res) => {
         .json(
             new ApiResponse(
                 200,
-                user,
+                {
+                    user: {
+                        fullName: user.fullName,
+                        email: user.email
+                    }
+                },
                 "Account details updated successfully"
             )
         );
@@ -339,14 +359,11 @@ const updateAccountDetails = asyncHandler(async (req,res) => {
 
 const updateUserAvatar = asyncHandler(async (req,res) => {
     const avatarLocalPath = req?.file?.path;
-
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar is missing");
     }
 
-    const user = req.user;
-
-    const oldavatarPublicId = user.avatarPublicId;
+    const oldavatarPublicId = req.user.avatarPublicId;
 
     const avatar = await uploadOnCloudinary(avatarLocalPath);
 
@@ -354,13 +371,19 @@ const updateUserAvatar = asyncHandler(async (req,res) => {
         throw new ApiError(400,"Error while uploading avatar");
     }
 
-    user.avatar = avatar.secure_url;
-    user.avatarPublicId = avatar.public_id;
-    await user.save({validateBeforeSave: false}) 
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                avatar: avatar.secure_url,
+                avatarPublicId: avatar.public_id
+            }
+        }
+    );
 
     try{
         if(oldavatarPublicId){
-            await deleteFromCloudinary(oldavatarPublicId,"image");
+            await deleteFromCloudinary(oldavatarPublicId, "image");
         }
     }catch(err){
         console.error("Cloudinary deletion failed:", err.message);
@@ -370,7 +393,7 @@ const updateUserAvatar = asyncHandler(async (req,res) => {
         .json(
             new ApiResponse(
                 200,
-                avatar.secure_url,
+                {avatar: avatar.secure_url},
                 "Avatar updated successfully"
             )
         );
@@ -378,14 +401,11 @@ const updateUserAvatar = asyncHandler(async (req,res) => {
 
 const updateUserCoverImage = asyncHandler(async (req,res) => {
     const coverImageLocalPath = req?.file?.path;
-
     if(!coverImageLocalPath){
         throw new ApiError(400,"Cover image is missing");
     }
     
-    const user = req.user;
-
-    const oldcoverImagePublicId = user.coverImagePublicId;
+    const oldcoverImagePublicId = req.user.coverImagePublicId;
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
@@ -393,9 +413,15 @@ const updateUserCoverImage = asyncHandler(async (req,res) => {
         throw new ApiError(400,"Error while uploading cover image");
     }
 
-    user.coverImage = coverImage.secure_url;
-    user.coverImagePublicId = coverImage.public_id;
-    await user.save({validateBeforeSave: false});
+     await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                coverImage: coverImage.secure_url,
+                coverImagePublicId: coverImage.public_id
+            }
+        }
+    );
 
     try{
         if(oldcoverImagePublicId){
@@ -410,7 +436,7 @@ const updateUserCoverImage = asyncHandler(async (req,res) => {
         .json(
             new ApiResponse(
                 200,
-                coverImage.secure_url,
+                {coverImage: coverImage.secure_url},
                 "Cover image updated successfully"
             )
         );
@@ -433,7 +459,7 @@ const getChannelProfile = asyncHandler(async (req,res) => {
     
     let channel = await User.aggregate([
         {
-            $match: {_id: channelId}
+            $match: {_id: new mongoose.Types.ObjectId(channelId)}
         },
         {
             $lookup: {
@@ -482,7 +508,7 @@ const getChannelProfile = asyncHandler(async (req,res) => {
         }
     ]);
 
-    if(!channel?.length){
+    if(!channel?.length === 0){
         throw new ApiError(404,"Channel does not exist");
     }
     console.log(channel);
@@ -492,25 +518,19 @@ const getChannelProfile = asyncHandler(async (req,res) => {
         .json(
             new ApiResponse(
                 200,
-                channel[0],
-                "Channel details are fethced successfully"
+                 { channel: channel[0] },
+                "Channel details fethced successfully"
             )
         );
 });
 
 const getWatchHistory = asyncHandler (async (req,res) => {
-    const loggedInUserId = req.user?._id 
-        ? new mongoose.Types.ObjectId(req.user._id)
-        : null;
-
-    if (!loggedInUserId) {
-        throw new ApiError(400, "User not logged in");
-    }
+    const userId = new mongoose.Types.ObjectId(req.user._id);
 
     const details = await User.aggregate([
         {
             $match: {
-                _id: loggedInUserId
+                _id: userId 
             }
         },
         {
@@ -555,7 +575,10 @@ const getWatchHistory = asyncHandler (async (req,res) => {
         .json(
             new ApiResponse(
                 200,
-                 details?.[0]?.watchHistory ?? [],
+                {
+                    watchHistory:
+                        details[0]?.watchHistory ?? []
+                },
                 "Watch history fetched successfully"
             )
         );
@@ -600,11 +623,11 @@ const deleteUser = asyncHandler(async (req,res)=>{
         await Promise.all(
             videos.flatMap(video => [
                 limit(() =>
-                    deleteFromCloudinary(video.cloudinaryPublicFileId, "video")
+                    deleteFromCloudinary(video.PublicVideoFileId, "video")
                         .catch(err => console.error("Video delete failed:", err.message))
                 ),
                 limit(() =>
-                    deleteFromCloudinary(video.cloudinaryPublicThumbnailId, "image")
+                    deleteFromCloudinary(video.PublicThumbnailId, "image")
                         .catch(err => console.error("Thumbnail delete failed:", err.message))
                 )
             ])
