@@ -1,4 +1,4 @@
-import mongoose, {isValidObjectId} from "mongoose";
+import { isValidObjectId } from "mongoose";
 import { Subscription } from "../models/subscription.models.js";
 import ApiError from "../utils/ApiError.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
@@ -45,20 +45,45 @@ const toggleSubscription = asyncHandler(async (req, res) => {
         );
 });
 
-// learn pagination for optimal fetching
-// controller to return subscriber list of a channel
-const getChannelSubscribers = asyncHandler(async (req, res) => {
-    const {channelId} = req.params;
+// return subscriber list of a channel
+const getSubscribers = asyncHandler(async (req, res) => {
+    let {channelId} = req.params; 
 
-    if(!channelId || isValidObjectId(channelId)){
-         throw new ApiError(400,`Invalid channel id`);
+    // If no channelId passed, use logged-in user channel
+    channelId = channelId || req.user._id;
+    
+    if(!channelId || !isValidObjectId(channelId)){
+        throw new ApiError(400,`Invalid channel id`);
+    }
+    
+    let {page = 1, limit, sortBy, sortType} = req.query;
+
+    page = Math.max(parseInt(page, 10) || 1, 1);
+    limit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 25);
+    const skip = (page-1)*limit;
+
+    sortType = sortType?.trim().toLowerCase();
+    const sortOrder = sortType === "asc"? 1: -1;
+
+    const filters ={};
+    filters.channel = channelId;
+    
+    const allowedSortFields = ["createdAt", "updatedAt"];
+    if (!allowedSortFields.includes(sortBy)) {
+        sortBy = "createdAt";
     }
 
-    const subscribersList = await Subscription.find({
-        channel: channelId
-    })
+
+    const sortOptions = {
+        [sortBy]: sortOrder
+    };
+
+    const subscribersList = await Subscription.find(filters)
+        .select("_id subscriber")
         .populate("subscriber","username avatar")
-        .sort({ creaedAt: -1 })
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
         .lean();
 
     
@@ -77,76 +102,43 @@ const getChannelSubscribers = asyncHandler(async (req, res) => {
         );
 
 });
-const getMySubscribers = asyncHandler(async (req, res) => {
-    const {channelId} = req.params;
 
-    if(!channelId || isValidObjectId(channelId)){
-         throw new ApiError(400,`Invalid channel id`);
-    }
-
-    const subscribersList = await Subscription.find({
-        channel: channelId
-    })
-        .populate("subscriber","username avatar")
-        .sort({ creaedAt: -1 })
-        .lean();
-
-    
-    let message = subscribersList.length === 0
-        ? "Channel has zero subscribers"
-        : "Subscribers fetched successfully";
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                subscribersList,
-                message
-            )
-        );
-
-});
-
-// learn pagination for optimal fetching
-// controller to return channel list to which user has subscribed
-const getMySubscribedChannels = asyncHandler(async (req, res) => {
-    const subscribedList = await Subscription.find({
-        subscriber: req.user._id
-    })
-        .populate("channel","username avatar")
-        .sort({creaedAt: -1})
-        .lean();
-
-    let message = subscribedList.length === 0
-        ? "You have not subscribed to any channel"
-        : "Subscribed channels fetched successfully";
-
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                subscribedList,
-                message
-            )
-        );
-
-});
-
-// learn pagination for optimal fetching
+// return channel list to which user/channelId has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const { subscriberId } = req.params;
+    let { subscriber } = req.params;
+    subscriber = subscriber || req.user._id;
 
-    if(!subscriberId || isValidObjectId(subscriberId)){
-         throw new ApiError(400,`Invalid subscriber id`);
+    if(!subscriber || !isValidObjectId(subscriber)){
+        throw new ApiError(400,`Invalid subscriber id`);
     }
-    const subscribedList = await Subscription.find({
-        subscriber: subscriberId
-    })
+
+    let {page = 1, limit, sortBy, sortType} = req.query;
+    
+    page = Math.max(parseInt(page, 10) || 1, 1);
+    limit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 25);
+    const skip = (page-1)*limit;
+
+    sortType = sortType?.trim().toLowerCase();
+    const sortOrder = sortType === "asc"? 1: -1;
+
+    const filters ={};
+    filters.subscriber = subscriber;
+    
+    const allowedSortFields = ["createdAt", "updatedAt"];
+    if (!allowedSortFields.includes(sortBy)) {
+        sortBy = "createdAt";
+    }
+
+    const sortOptions = {
+        [sortBy]: sortOrder
+    };
+
+    const subscribedList = await Subscription.find(filters)
+        .select("_id channel")
         .populate("channel","username avatar")
-        .sort({creaedAt: -1})
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
         .lean();
 
      let message = subscribedList.length === 0
@@ -169,8 +161,6 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
 
 export {
     toggleSubscription,
-    getChannelSubscribers,
-    getMySubscribers,
+    getSubscribers,
     getSubscribedChannels,
-    getMySubscribedChannels,
 }

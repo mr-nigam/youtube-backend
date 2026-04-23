@@ -404,7 +404,7 @@ const getSearchedVideos = asyncHandler( async(req,res)=>{
     let { page = 1, limit=10, sortBy, sortType, title, channelId} = req.query;
 
     page = parseInt(page,10) || 1;
-    limit = parseInt(limit,10) || 10;
+    limit = Math.min(parseInt(limit, 10) || 10, 25);
     const skip = (page-1)*limit;
 
     sortBy = sortBy?.trim() || "views";

@@ -3,10 +3,8 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 import {
     toggleSubscription,
-    getChannelSubscribers,
-    getMySubscribers,
+    getSubscribers,
     getSubscribedChannels,
-    getMySubscribedChannels,
 } from "../controllers/subscription.controller.js";
 
 
@@ -15,12 +13,18 @@ const router = Router();
 
 router.use(verifyJWT);
 
+// specific routes first
+router.route("/subscribed")
+    .get(getSubscribedChannels);
+    
+router.route("/subscribed/:subscriber")
+    .get(getSubscribedChannels);
 
-router.route("/:channelId").post(toggleSubscription);
+// dynamic route last
+router.route("/:channelId")
+    .post(toggleSubscription)
+    .get(getSubscribers);
 
-router.route("/channelId").get(getChannelSubscribers);
-
-router.route("/me/").get(getMySubscribers);
 
 export default router;
 
