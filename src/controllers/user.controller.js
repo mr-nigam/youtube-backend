@@ -103,7 +103,6 @@ const registerUser = asyncHandler(async (req,res) => {
             password,
             username: usernameLower
         });
-
         
         if(!user){
             throw new ApiError(500, "User creation failed");
@@ -181,6 +180,7 @@ const loginUser = asyncHandler(async (req, res) => {
         avatar: user.avatar,
         coverImage: user.coverImage
     };
+    
     return res
         .status(200)
         .cookie("accessToken",accessToken,getAccessCookieOptions())

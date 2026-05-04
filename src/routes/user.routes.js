@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import {validateDeleteUser} from "../middlewares/delete_user.middleware.js";
+import { validateDeleteUser } from "../middlewares/delete_user.middleware.js";
 
 import { 
         loginUser, 
